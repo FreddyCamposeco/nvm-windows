@@ -71,12 +71,48 @@ O si no configuraste el alias:
 
 - `install <versión>`: Instala una versión específica de Node.js (ej: `nvm install 18.17.0`)
 - `use <versión>`: Cambia a una versión instalada
-- `ls`: Lista versiones instaladas
+- `ls` / `list`: Lista versiones instaladas con colores
 - `ls-remote`: Lista versiones disponibles en nodejs.org
 - `current`: Muestra la versión actual de Node.js
 - `alias <nombre> <versión>`: Crea un alias para una versión
 - `unalias <nombre>`: Elimina un alias
+- `set-colors <esquema>`: Configura el esquema de colores (5 caracteres)
 - `help`: Muestra ayuda
+
+## Colores y Tema
+
+nvm-windows soporta colores personalizables para una mejor experiencia visual, similar a nvm.sh.
+
+### Configuración de Colores
+
+```powershell
+# Establecer esquema de colores (azul, amarillo, verde, rojo, gris)
+nvm set-colors bygre
+
+# Esquema alternativo (rojo, verde, amarillo, azul, negro)
+nvm set-colors rgybk
+```
+
+### Códigos de Color Disponibles
+
+- `r` = rojo, `g` = verde, `b` = azul, `y` = amarillo
+- `c` = cyan, `m` = magenta, `k` = negro, `e` = gris claro
+- `R`/`G`/`B`/`C`/`M`/`Y`/`K`/`W`/`E` = versiones en negrita
+
+### Variables de Entorno
+
+- `NVM_COLORS`: Esquema de colores personalizado (ej: "bygre")
+- `NO_COLOR`: Desactiva colores completamente
+- `NVM_NO_COLORS`: Desactiva colores (igual que NO_COLOR)
+
+### Ejemplo de Salida con Colores
+
+```
+Installed versions:
+-> v18.17.0         *  (versión actual en verde)
+   v20.5.0          *  (versiones instaladas en azul)
+   system            *  (versión del sistema en cyan)
+```
 
 ## Ejemplos
 
@@ -87,13 +123,12 @@ nvm install 18.17.0
 # Usar la versión instalada
 nvm use 18.17.0
 
-# Verificar _versión_
+# Configurar colores personalizados
+nvm set-colors bygre
+
+# Ver versiones con colores
+nvm ls
+
+# Verificar versión
 node --version
 ```
-
-## Notas
-
-- Solo soporta arquitectura x64 por defecto. Para x86, edita la variable `$ARCH` en `nvm.ps1`.
-- Las versiones se instalan en `%USERPROFILE%\.nvm`.
-- Para uso permanente, agrega `%USERPROFILE%\.nvm` a tu PATH.
-- Compatible con PowerShell y Starship (actualiza `$env:NODE_VERSION` para detección automática de versión).
