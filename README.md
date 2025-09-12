@@ -64,7 +64,7 @@ nvm install 18.17.0
 # Usar la versión instalada
 nvm use 18.17.0
 
-# Verificar versión
+# Verificar _versión_
 node --version
 ```
 
