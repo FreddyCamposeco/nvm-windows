@@ -6,8 +6,8 @@ param(
 
 # Configuración
 $NVM_DIR = "$env:USERPROFILE\.nvm"
-$SCRIPT_URL = "https://raw.githubusercontent.com/nvm-sh/nvm/master/0_windows/nvm.ps1"
-$CMD_URL = "https://raw.githubusercontent.com/nvm-sh/nvm/master/0_windows/nvm.cmd"
+$SCRIPT_URL = "https://raw.githubusercontent.com/FreddyCamposeco/nvm-windows/master/nvm.ps1"
+$CMD_URL = "https://raw.githubusercontent.com/FreddyCamposeco/nvm-windows/master/nvm.cmd"
 
 # Función para instalar nvm
 function Install-NVM {
