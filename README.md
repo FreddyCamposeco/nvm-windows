@@ -2,17 +2,40 @@
 
 Esta es una adaptación de nvm (Node Version Manager) para Windows nativo, usando PowerShell.
 
-## Instalación
+## Instalación Rápida
 
-1. Ejecuta el script de instalación:
+Para instalar sin clonar el repositorio:
+
+```powershell
+# Descarga e instala automáticamente
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/FreddyCamposeco/nvm-windows/master/install-nvm.ps1" -OutFile "install-nvm.ps1"
+.\install-nvm.ps1
+```
+
+Para desinstalar:
+
+```powershell
+.\install-nvm.ps1 -Uninstall
+```
+
+## Instalación Manual
+
+1. Clona el repositorio:
+
+   ```bash
+   git clone https://github.com/FreddyCamposeco/nvm-windows.git
+   cd nvm-windows
+   ```
+
+2. Ejecuta el script de instalación:
 
    ```powershell
    .\install.ps1
    ```
 
-2. Agrega `%USERPROFILE%\.nvm` a tu PATH (ya se hace automáticamente, pero reinicia la terminal si es necesario).
+3. Agrega `%USERPROFILE%\.nvm` a tu PATH (ya se hace automáticamente, pero reinicia la terminal si es necesario).
 
-3. Para usar `nvm` directamente (sin `.\`), ejecuta una vez:
+4. Para usar `nvm` directamente (sin `.\`), ejecuta una vez:
 
    ```powershell
    Set-Alias nvm "$env:USERPROFILE\.nvm\nvm.ps1"
