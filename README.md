@@ -1,6 +1,6 @@
-# nvm-windows v2.3 🚀
+# nvm-windows v2.4-beta 🚀
 
-> Node Versi- 🛡️ **Vista Mejorada de LTS**: `nvm ls` muestra versiones LTS con estado y metadatos
+> Node Versi- 🛡️ **Sistema de Enlaces Simbólicos**: Gestión de versiones sin manipulación de PATH
 
 - 🛡️ **Manejo Robusto de Errores**: Validación completa y mensajes informativos Manager para Windows nativo con PowerShell
 
@@ -18,9 +18,10 @@
 - 🛡️ **Vista Mejorada de LTS**: `nvm ls` muestra versiones LTS con estado y metadatos
 - 🛡️ **Manejo Robusto de Errores**: Validación completa y mensajes informativos
 - 📦 **Compatibilidad Total**: Funciona con npm, yarn, pnpm y más
+- 🔗 **Sistema de Enlaces Simbólicos**: Gestión de versiones sin manipulación de PATH
 
-[![Estado](https://img.shields.io/badge/Estado-Est%C3%A1vel-brightgreen.svg)](https://github.com/FreddyCamposeco/nvm-windows)
-[![Versión](https://img.shields.io/badge/Versi%C3%B3n-2.3-blue.svg)](https://github.com/FreddyCamposeco/nvm-windows)
+[![Estado](https://img.shields.io/badge/Estado-Beta-orange.svg)](https://github.com/FreddyCamposeco/nvm-windows)
+[![Versión](https://img.shields.io/badge/Versi%C3%B3n-2.4--beta-blue.svg)](https://github.com/FreddyCamposeco/nvm-windows)
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1+-blue.svg)](https://github.com/PowerShell/PowerShell)
 
 Una adaptación completa de [nvm](https://github.com/nvm-sh/nvm) para Windows nativo, con mejoras inspiradas en [nvm.fish](https://github.com/jorgebucaran/nvm.fish). Ofrece una experiencia de línea de comandos elegante y potente para gestionar múltiples versiones de Node.js.
@@ -37,9 +38,40 @@ Una adaptación completa de [nvm](https://github.com/nvm-sh/nvm) para Windows na
 - 🔄 **Auto-actualización**: Comando `self-update` para mantener al día
 - 🏠 **Versión por Defecto**: Configura versión automática para nuevas sesiones
 - 🧹 **Limpieza Automática**: Comando `cleanup` para eliminar versiones innecesarias
-- � **Vista Mejorada de LTS**: `nvm ls` muestra versiones LTS con estado y metadatos
-- �🛡️ **Manejo Robusto de Errores**: Validación completa y mensajes informativos
+- 🔗 **Sistema de Enlaces Simbólicos**: Gestión de versiones sin manipulación de PATH
+- 🛡️ **Vista Mejorada de LTS**: `nvm ls` muestra versiones LTS con estado y metadatos
+- 🛡️ **Manejo Robusto de Errores**: Validación completa y mensajes informativos
 - 📦 **Compatibilidad Total**: Funciona con npm, yarn, pnpm y más
+
+## 🔗 Sistema de Enlaces Simbólicos (v2.4-beta)
+
+La versión 2.4 introduce un **sistema revolucionario de enlaces simbólicos** que elimina la manipulación directa del PATH para cada cambio de versión:
+
+### Cómo funciona
+
+- **Ubicación virtual fija**: `$NVM_DIR\current\bin` se agrega al PATH una sola vez durante la instalación
+- **Enlaces dinámicos**: Los ejecutables de Node.js se enlazan simbólicamente desde la versión instalada a la ubicación virtual
+- **Cambios instantáneos**: `nvm use <versión>` actualiza enlaces simbólicos en lugar de modificar PATH
+
+### Beneficios
+
+- 🚀 **Rendimiento mejorado**: Cambios de versión instantáneos
+- 🛡️ **PATH estable**: No se modifica el PATH del sistema para cada cambio
+- 🔧 **Mejor compatibilidad**: Funciona perfectamente con herramientas como Starship
+- 💾 **Persistencia**: La versión activa se mantiene entre sesiones
+- 🔄 **Migración automática**: Comando `migrate` para actualizar desde versiones anteriores
+
+### Uso
+
+```powershell
+# El sistema se configura automáticamente durante la instalación
+# Para migrar desde versiones anteriores:
+nvm migrate
+
+# Cambiar versiones (ahora instantáneo)
+nvm use lts
+nvm use 20.19.5
+```
 
 ## 📦 Instalación
 
@@ -120,6 +152,7 @@ nvm install 20.19.5
 | Comando                    | Descripción                          | Ejemplo                |
 | -------------------------- | ------------------------------------ | ---------------------- |
 | `nvm doctor`               | Verifica instalación                 | `nvm doctor`           |
+| `nvm migrate`              | Migra al sistema de enlaces simbólicos | `nvm migrate`          |
 | `nvm cleanup`              | Elimina versiones no actuales ni LTS | `nvm cleanup`          |
 | `nvm self-update`          | Actualiza nvm-windows                | `nvm self-update`      |
 | `nvm set-default <versión>`| Establece versión por defecto        | `nvm set-default lts`  |
@@ -462,11 +495,11 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para
 
 ## 📦 Estructura del Repositorio
 
-Después de la limpieza v2.3, el repositorio contiene solo los archivos esenciales:
+Después de la limpieza v2.4-beta, el repositorio contiene solo los archivos esenciales:
 
 ```text
 nvm-windows/
-├── nvm.ps1              # Script principal de PowerShell
+├── nvm.ps1              # Script principal de PowerShell con sistema de enlaces simbólicos
 ├── nvm.tests.ps1        # Suite completa de tests (17 tests)
 ├── install-nvm.ps1      # Instalador avanzado con desinstalación
 ├── nvm.cmd              # Wrapper para Command Prompt
@@ -477,13 +510,13 @@ nvm-windows/
 └── .gitignore           # Configuración de Git
 ```
 
-**Archivos eliminados en v2.3:**
+**Novedades en v2.4-beta:**
 
-- `install.ps1` - Reemplazado por `install-nvm.ps1`
-- `demo-uninstall.ps1` - Funcionalidad integrada en `install-nvm.ps1`
-- `test_output.txt` - Archivo de prueba innecesario
-- `_nvm/` - Código fuente de nvm bash (no pertenecía aquí)
-- `_nvm.fish/` - Implementación de Fish shell (no pertenecía aquí)
+- 🔗 **Sistema de enlaces simbólicos**: Gestión de versiones revolucionaria sin manipulación de PATH
+- 🚀 **Rendimiento mejorado**: Cambios de versión instantáneos
+- 🛡️ **PATH estable**: No se modifica el PATH del sistema para cada cambio
+- 🔄 **Comando migrate**: Migración automática desde versiones anteriores
+- 💾 **Persistencia mejorada**: La versión activa se mantiene entre sesiones
 
 **⭐ Si te gusta este proyecto, ¡dale una estrella en GitHub!**
 

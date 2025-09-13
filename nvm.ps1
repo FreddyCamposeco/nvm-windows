@@ -1,4 +1,4 @@
-# nvm.ps1 - Node Version Manager para Windows (PowerShell)
+# nvm.ps1 - Node Version Manager para Windows (PowerShell) v2.4-beta
 # Equivalente a nvm.sh para sistemas Windows nativos
 
 param(
