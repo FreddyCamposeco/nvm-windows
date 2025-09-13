@@ -1,41 +1,23 @@
-# nvm-windows v2.2 🚀
+# nvm-windows v2.3 🚀
 
-*Node - 🎯 **Comandos Directos**: Usa `nvm` desde cualquier directorio
+> Node Version Manager para Windows nativo con PowerShell
 
+- 🎯 **Comandos Directos**: Usa `nvm` desde cualquier directorio
 - 🎨 **Formato Mejorado**: Inspirado en nvm.fish con indicadores visuales
 - 🏷️ **Sistema de Alias Avanzado**: Soporte para `lts`, `latest` y nombres de LTS
 - 🔍 **Diagnóstico Integrado**: Comando `doctor` para verificar instalación
 - 📄 **Soporte para .nvmrc**: Detección automática de versiones por proyecto
 - 🎨 **Colores Personalizables**: Esquemas de color completamente configurables
-- 🚀 **Instalación Automática**: Setup con un solo comando + instalación automática de LTS
+- 🚀 **Instalación Automática**: Setup con un solo comando + instalación opcional de LTS
 - 🔄 **Auto-actualización**: Comando `self-update` para mantener al día
 - 🏠 **Versión por Defecto**: Configura versión automática para nuevas sesiones
 - 🧹 **Limpieza Automática**: Comando `cleanup` para eliminar versiones innecesarias
-- � **Vista Mejorada de LTS**: `nvm ls` muestra versiones LTS con estado y metadatos
-- �🛡️ **Manejo Robusto de Errores**: Validación completa y mensajes informativos
-- 📦 **Compatibilidad Total**: Funciona con npm, yarn, pnpm y máser para Windows nativo con PowerShell*
+- 🛡️ **Desinstalación Forzada**: Opción `--force` para desinstalar versión activa
+- 🛡️ **Vista Mejorada de LTS**: `nvm ls` muestra versiones LTS con estado y metadatos
+- 🛡️ **Manejo Robusto de Errores**: Validación completa y mensajes informativos
+- 📦 **Compatibilidad Total**: Funciona con npm, yarn, pnpm y más
 
-[![Estado](https://i```powershell
-→ global:       v22.19.00
-  latest:       v24.08.00
-  lts/argon:    v4.9.1
-  lts/boron:    v6.9.5
-  lts/carbon:   v8.9.4
-  lts/dubnium:  v10.24.1
-  lts/erbium:   v12.22.9
-  lts/fermium:  v14.21.3
-  lts/gallium:  v16.20.2
-  lts/hydrogen: v18.20.8
-  lts/iron:     v20.9.0  ✓
-  lts/jod:      v22.19.0  ✓
-▶ .nvmrc:       v20.19.5  ✓
-
-Available (non-LTS):
-  v24.x:        v24.08.00
-  v23.x:        v23.09.00
-  v22.x:        v22.09.00  ✓
-
-```Estado-Est%C3%A1vel-brightgreen.svg)](https://github.com/FreddyCamposeco/nvm-windows)
+[![Estado](https://img.shields.io/badge/Estado-Est%C3%A1vel-brightgreen.svg)](https://github.com/FreddyCamposeco/nvm-windows)
 [![Versión](https://img.shields.io/badge/Versi%C3%B3n-2.3-blue.svg)](https://github.com/FreddyCamposeco/nvm-windows)
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1+-blue.svg)](https://github.com/PowerShell/PowerShell)
 
@@ -107,7 +89,7 @@ nvm ls
 
 # Instalar versiones adicionales si necesitas
 nvm install latest
-nvm install 18.19.0
+nvm install 20.19.5
 ```
 
 ## 📋 Comandos Disponibles
@@ -120,7 +102,7 @@ nvm install 18.19.0
 | `nvm use <versión>`     | Cambia a una versión o usa .nvmrc    | `nvm use`             |
 | `nvm ls` / `nvm list`   | Lista versiones instaladas con LTS y estado | `nvm ls`              |
 | `nvm current`           | Muestra versión actual               | `nvm current`         |
-| `nvm ls-remote`         | Lista versiones disponibles          | `nvm ls-remote`       |
+| `nvm uninstall <versión> [--force]` | Desinstala una versión (usa --force para versión activa) | `nvm uninstall 20.19.5 --force` |
 
 ### Sistema de Alias
 
@@ -144,7 +126,7 @@ nvm install 18.19.0
 
 ## 🎨 Formato Mejorado de Salida
 
-nvm-windows v2.2 incluye un formato de salida compacto e informativo inspirado en nvm.fish, con **colores configurables** para una mejor experiencia visual:
+nvm-windows v2.3 incluye un formato de salida compacto e informativo inspirado en nvm.fish, con **colores configurables** para una mejor experiencia visual:
 
 ```powershell
 → global:       v22.19.0     ✓
@@ -188,9 +170,9 @@ Crea atajos para tus versiones favoritas:
 
 ```powershell
 # Crear aliases útiles
-nvm alias lts 18.19.0
-nvm alias latest 20.11.0
-nvm alias dev 21.0.0
+nvm alias lts 22.19.0
+nvm alias latest 24.8.0
+nvm alias dev 23.9.0
 
 # Listar todos los aliases
 nvm aliases
@@ -274,7 +256,7 @@ Configura una versión automática para nuevas sesiones de PowerShell:
 nvm set-default lts
 
 # O una versión específica
-nvm set-default 20.11.0
+nvm set-default 20.19.5
 
 # Verificar configuración
 $env:nvm_default_version
@@ -310,7 +292,7 @@ El comando `doctor` verifica:
 nvm doctor
 
 # Si no está, reinstala
-.\install.ps1
+.\install-nvm.ps1
 ```
 
 ### "Versión no instalada"
@@ -341,7 +323,7 @@ nvm alias myversion 18.19.0
 # Instalar múltiples versiones con aliases
 nvm install lts
 nvm install latest
-nvm install 18.19.0
+nvm install 20.19.5
 
 # Configurar versión por defecto
 nvm set-default lts
@@ -358,7 +340,7 @@ nvm use bleeding
 node --version  # v24.x.x
 
 # Usar .nvmrc en proyectos
-echo "18.19.0" > .nvmrc
+echo "20.19.5" > .nvmrc
 nvm use  # Detecta automáticamente
 
 # Ver todas las versiones
@@ -481,7 +463,7 @@ Después de la limpieza v2.3, el repositorio contiene solo los archivos esencial
 ```text
 nvm-windows/
 ├── nvm.ps1              # Script principal de PowerShell
-├── nvm.tests.ps1        # Suite completa de tests (16 tests)
+├── nvm.tests.ps1        # Suite completa de tests (17 tests)
 ├── install-nvm.ps1      # Instalador avanzado con desinstalación
 ├── nvm.cmd              # Wrapper para Command Prompt
 ├── nvm-wrapper.cmd      # Wrapper adicional para compatibilidad
@@ -494,8 +476,8 @@ nvm-windows/
 **Archivos eliminados en v2.3:**
 
 - `install.ps1` - Reemplazado por `install-nvm.ps1`
-- `demo-uninstall.ps1` - Script de demostración innecesario
-- `test_output.txt` - Archivo vacío
+- `demo-uninstall.ps1` - Funcionalidad integrada en `install-nvm.ps1`
+- `test_output.txt` - Archivo de prueba innecesario
 - `_nvm/` - Código fuente de nvm bash (no pertenecía aquí)
 - `_nvm.fish/` - Implementación de Fish shell (no pertenecía aquí)
 
