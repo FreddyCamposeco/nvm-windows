@@ -1,4 +1,4 @@
-﻿# nvm.ps1 - Node Version Manager para Windows (PowerShell)
+# nvm.ps1 - Node Version Manager para Windows (PowerShell)
 # Equivalente a nvm.sh para sistemas Windows nativos
 
 param(
@@ -987,7 +987,7 @@ function Show-NvmVersions {
         Write-NvmColoredText "$formattedVersion" "y" -NoNewline
         Write-Host "$finalSpaces" -NoNewline
         if ($isInstalled) {
-            Write-NvmColoredText "✓" "G"
+            Write-NvmColoredText "✓" "M"
         }
         else {
             Write-Host ""
@@ -1011,7 +1011,7 @@ function Show-NvmVersions {
         Write-NvmColoredText "$formattedVersion" "b" -NoNewline
         Write-Host "$finalSpaces" -NoNewline
         if ($isInstalled) {
-            Write-NvmColoredText "✓" "G"
+            Write-NvmColoredText "✓" "M"
         }
         else {
             Write-Host ""
@@ -1033,7 +1033,7 @@ function Show-NvmVersions {
         Write-NvmColoredText "$formattedVersion" "b" -NoNewline
         Write-Host "$finalSpaces" -NoNewline
         if ($isInstalled) {
-            Write-NvmColoredText "✓" "G"
+            Write-NvmColoredText "✓" "M"
         }
         else {
             Write-Host ""
@@ -1062,7 +1062,7 @@ function Show-NvmVersions {
         Write-NvmColoredText "$formattedVersion" "e" -NoNewline
         Write-Host "$finalSpaces" -NoNewline
         if ($isInstalled) {
-            Write-NvmColoredText "✓" "G"
+            Write-NvmColoredText "✓" "M"
         }
         else {
             Write-Host ""
@@ -1093,7 +1093,7 @@ function Show-NvmVersions {
         Write-NvmColoredText "$formattedVersion" "M" -NoNewline  # Bold magenta for LTS versions
         Write-Host "$finalSpaces" -NoNewline
         if ($isInstalled) {
-            Write-NvmColoredText "✓" "G"
+            Write-NvmColoredText "✓" "M"
         }
         else {
             Write-Host ""
@@ -1120,7 +1120,7 @@ function Show-NvmVersions {
             }
             Write-NvmColoredText $formattedInstalled "M" -NoNewline
             Write-Host "$finalSpacesInstalled" -NoNewline
-            Write-NvmColoredText "✓" "G"
+            Write-NvmColoredText "✓" "M"
         }
     }
 
@@ -1153,16 +1153,16 @@ function Show-NvmVersions {
 
         # Color indicator
         if ($isCurrent) {
-            Write-NvmColoredText "▶" "G" -NoNewline
+            Write-NvmColoredText "▶" "Y" -NoNewline
         }
         else {
-            Write-NvmColoredText "ϟ" "C" -NoNewline
+            Write-NvmColoredText "ϟ" "Y" -NoNewline
         }
         Write-NvmColoredText " $label$padding" "e" -NoNewline
         Write-NvmColoredText "$formattedVersion" "e" -NoNewline
         Write-Host "$finalSpaces" -NoNewline
         if ($showCheckmark) {
-            Write-NvmColoredText "✓" "G"
+            Write-NvmColoredText "✓" "M"
         }
         else {
             Write-Host ""
@@ -1206,7 +1206,7 @@ function Show-NvmVersions {
                 Write-NvmColoredText "▶" "G" -NoNewline
             }
             elseif ($nvmrcVersion -and $normalizedVersion -eq (Normalize-Version $nvmrcVersion)) {
-                Write-NvmColoredText "ϟ" "C" -NoNewline
+                Write-NvmColoredText "ϟ" "Y" -NoNewline
             }
             else {
                 Write-Host " " -NoNewline
@@ -1214,7 +1214,7 @@ function Show-NvmVersions {
             Write-NvmColoredText " $label$padding" "e" -NoNewline
             Write-NvmColoredText "$formattedVersion" "e" -NoNewline
             Write-Host "$finalSpaces" -NoNewline
-            Write-NvmColoredText "✓" "G"
+            Write-NvmColoredText "✓" "M"
         }
     }
 

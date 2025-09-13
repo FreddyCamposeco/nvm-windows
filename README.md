@@ -1,6 +1,8 @@
 # nvm-windows v2.3 🚀
 
-> Node Version Manager para Windows nativo con PowerShell
+> Node Versi- 🛡️ **Vista Mejorada de LTS**: `nvm ls` muestra versiones LTS con estado y metadatos
+
+- 🛡️ **Manejo Robusto de Errores**: Validación completa y mensajes informativos Manager para Windows nativo con PowerShell
 
 - 🎯 **Comandos Directos**: Usa `nvm` desde cualquier directorio
 - 🎨 **Formato Mejorado**: Inspirado en nvm.fish con indicadores visuales
@@ -129,24 +131,26 @@ nvm install 20.19.5
 nvm-windows v2.3 incluye un formato de salida compacto e informativo inspirado en nvm.fish, con **colores configurables** para una mejor experiencia visual:
 
 ```powershell
-→ global:       v22.19.0     ✓
+→ global:       v22.15.0     ✓
   latest:       v24.8.0      ✓
   lts/argon:    v4.9.1       ✓
-  lts/boron:    v6.9.5       ✓
-  lts/carbon:   v8.9.4       ✓
+  lts/boron:    v6.17.1      ✓
+  lts/carbon:   v8.17.0      ✓
   lts/dubnium:  v10.24.1     ✓
   lts/erbium:   v12.22.9     ✓
   lts/fermium:  v14.21.3     ✓
   lts/gallium:  v16.20.2     ✓
   lts/hydrogen: v18.20.8     ✓
-  lts/iron:     v20.9.0      ✓
-▶ lts/jod:      v22.19.0     ✓
+  lts/iron:     v20.19.5     ✓
+▶ lts/jod:      v22.15.0     ✓
 ϟ .nvmrc:       v20.19.5     ✓
 
 Available (non-LTS):
   v24.x:        v24.8.0      ✓
   v23.x:        v23.9.0      ✓
-  v22.x:        v22.9.0      ✓
+  v22.x:        v22.15.0     ✓
+  v21.x:        v21.11.0     ✓
+  v20.x:        v20.19.5     ✓
 ```
 
 **Nota:** Los colores requieren una terminal compatible con códigos ANSI (Windows Terminal, Windows Console con VT habilitado, o terminales modernas). Si los colores no se muestran, usa `nvm set-colors` para configurar el esquema o establece `NO_COLOR=1` para desactivarlos.
@@ -155,9 +159,9 @@ Available (non-LTS):
 
 - `→` indica la versión global (se muestra siempre) - **azul**
 - `▶` indica la versión actualmente seleccionada - **verde**
-- `ϟ` indica que existe un archivo .nvmrc (sin forzar uso) - **cyan**
-- `ϟ▶` indica que existe .nvmrc Y es la versión actual - **cyan + verde**
-- `✓` marca todas las versiones disponibles (compactamente alineado al final)
+- `ϟ` indica que existe un archivo .nvmrc (sin forzar uso) - **amarillo fuerte**
+- `▶` indica que existe .nvmrc Y es la versión actual - **amarillo fuerte**
+- `✓` marca todas las versiones disponibles (compactamente alineado al final) - **magenta negrita**
 - **Versiones LTS** se muestran en **magenta negrita**
 - Alineación perfecta con ancho fijo compacto para consistencia
 - Versiones formateadas de manera natural (sin padding de ceros)
