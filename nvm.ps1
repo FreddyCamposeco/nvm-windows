@@ -164,27 +164,26 @@ function Install-Node {
         Invoke-WebRequest -Uri $url -OutFile $zipPath -ErrorAction Stop
 
         Write-Output "Extrayendo..."
-        # Extraer directamente al directorio temporal primero
-        $tempExtractPath = "$NVM_DIR\temp\$Version"
-        if (!(Test-Path $tempExtractPath)) {
-            New-Item -ItemType Directory -Path $tempExtractPath -Force | Out-Null
-        }
-        Expand-Archive -Path $zipPath -DestinationPath $tempExtractPath -Force -ErrorAction Stop
-
-        # Mover el contenido del subdirectorio al directorio final
-        $subDir = Get-ChildItem -Path $tempExtractPath -Directory | Select-Object -First 1
-        if ($subDir) {
-            $subDirPath = $subDir.FullName
-            # Mover todo el contenido al directorio final
-            Get-ChildItem -Path $subDirPath | Move-Item -Destination $extractPath -Force
-        }
-        else {
-            # Si no hay subdirectorio, mover todo directamente
-            Get-ChildItem -Path $tempExtractPath | Move-Item -Destination $extractPath -Force
+        # Limpiar directorio de destino si existe
+        if (Test-Path $extractPath) {
+            Remove-Item $extractPath -Recurse -Force
         }
 
-        # Limpiar directorio temporal
-        Remove-Item $tempExtractPath -Recurse -Force
+        # Extraer directamente al directorio final
+        Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force -ErrorAction Stop
+
+        # Verificar si se creó un subdirectorio y mover contenido si es necesario
+        $items = Get-ChildItem -Path $extractPath
+        if ($items.Count -eq 1 -and $items[0].PSIsContainer) {
+            # Hay un solo subdirectorio, mover su contenido
+            $subDirPath = $items[0].FullName
+            $tempItems = Get-ChildItem -Path $subDirPath
+            foreach ($item in $tempItems) {
+                Move-Item -Path $item.FullName -Destination $extractPath -Force
+            }
+            # Eliminar el subdirectorio vacío
+            Remove-Item $subDirPath -Force
+        }
 
         Remove-Item $zipPath -Force
         Write-Output "Node.js $Version instalado en $extractPath"
