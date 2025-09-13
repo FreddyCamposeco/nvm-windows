@@ -29,6 +29,12 @@ $NVM_DIR = "$env:USERPROFILE\.nvm"
 $NODE_MIRROR = "https://nodejs.org/dist"
 $ARCH = if ($env:PROCESSOR_ARCHITECTURE -eq "AMD64") { "x64" } else { "x86" }
 
+# Función auxiliar para mostrar errores
+function Write-NvmError {
+    param([string]$Message)
+    Write-Host "Error: $Message" -ForegroundColor Red
+}
+
 # Función para mostrar ayuda
 function Show-Help {
     Write-Output "Uso: nvm <comando> [versión]"
@@ -44,7 +50,7 @@ function Show-Help {
     Write-Output "  unalias <nombre>     Elimina un alias existente"
     Write-Output "  aliases              Lista todos los aliases definidos"
     Write-Output "  doctor               Verifica el estado de la instalación"
-    Write-Output "  cleanup              Elimina versiones no actuales ni LTS"
+    Write-Output "  migrate               Migra al sistema de enlaces simbólicos"
     Write-Output "  self-update          Actualiza nvm-windows desde GitHub"
     Write-Output "  set-colors <colores>  Establece el esquema de colores (5 caracteres)"
     Write-Output "  set-default <versión> Establece versión por defecto para nuevas sesiones"
@@ -442,12 +448,14 @@ function Use-Node {
         return
     }
 
-    # Limpiar versiones anteriores del PATH
-    $pathEntries = $env:PATH -split ';'
-    $cleanedPath = $pathEntries | Where-Object { $_ -notlike "*$NVM_DIR\v*" -and $_ -notlike "*node-*-win-*" } | Where-Object { $_ -ne "" }
-
-    # Agregar la nueva versión al PATH
-    $env:PATH = "$nodePath;$($cleanedPath -join ';')"
+    # Crear enlaces simbólicos en lugar de modificar PATH
+    try {
+        Set-NvmSymlinks $resolvedVersion
+    }
+    catch {
+        Write-NvmError "Error al crear enlaces simbólicos: $($_.Exception.Message)"
+        return
+    }
 
     # Establecer variable de entorno para compatibilidad con Starship y otros tools
     $env:NODE_VERSION = $resolvedVersion
@@ -492,11 +500,11 @@ function Get-RemoteVersion {
 
 # Función para mostrar la versión actual
 function Get-CurrentVersion {
-    # Primero intentar con Get-Command
-    $nodePath = Get-Command node -ErrorAction SilentlyContinue
-    if ($nodePath) {
+    # Primero intentar con enlaces simbólicos
+    $currentNodePath = "$NVM_DIR\current\bin\node.exe"
+    if (Test-Path $currentNodePath) {
         try {
-            $version = & node --version 2>$null
+            $version = & $currentNodePath --version 2>$null
             if ($version) {
                 Write-Output "Versión actual: $version"
                 return
@@ -520,12 +528,12 @@ function Get-CurrentVersion {
     }
 
     # Si todo falla, verificar si hay alguna versión de nvm en PATH
-    $nvmPaths = $env:PATH -split ';' | Where-Object { $_ -like "*nvm*" -and $_ -like "*v*" }
+    $nvmPaths = $env:PATH -split ';' | Where-Object { $_ -like "*nvm*" -and $_ -like "*current*" }
     if ($nvmPaths) {
-        Write-Output "Node.js no está en PATH. Usa 'nvm use <versión>' para activar una versión."
+        Write-Output "Node.js no está disponible. Usa 'nvm use <versión>' para activar una versión."
     }
     else {
-        Write-Output "Node.js no está en PATH. No hay versiones de nvm activas."
+        Write-Output "Node.js no está disponible. No hay versiones de nvm activas."
     }
 }
 
@@ -1220,121 +1228,222 @@ function Show-NvmVersions {
     Write-Host ""
 }
 
-# Función auxiliar para obtener la versión actual
-function Get-NvmCurrentVersion {
-    # Primero intentar detectar desde PATH
-    $nodePath = Get-Command node -ErrorAction SilentlyContinue
-    if ($nodePath) {
+function Use-Node {
+    param([string]$Version)
+
+    if ([string]::IsNullOrWhiteSpace($Version)) {
+        # Buscar .nvmrc
+        $nvmrcVersion = Get-NvmrcVersion
+        if ($nvmrcVersion) {
+            Write-Output "Encontrado .nvmrc con versión: $nvmrcVersion"
+            $Version = $nvmrcVersion
+        }
+        else {
+            Write-NvmError "Versión es requerida. Uso: nvm use <versión>"
+            return
+        }
+    }
+
+    # Resolver alias especial (latest, lts, etc.) o versión específica
+    $resolvedVersion = Resolve-Version $Version
+    if (-not $resolvedVersion) {
+        return
+    }
+
+    # Si la resolución fue diferente, mostrar el alias usado
+    if ($resolvedVersion -ne $Version -and $Version -notmatch '^v?\d+\.\d+\.\d+$') {
+        Write-Output "Usando alias '$Version' -> '$resolvedVersion'"
+    }
+
+    # Verificar si hay un alias guardado como archivo (para compatibilidad)
+    $aliasPath = "$NVM_DIR\alias\$Version"
+    if ((Test-Path $aliasPath) -and ($resolvedVersion -eq $Version)) {
         try {
-            $version = & node --version 2>$null
-            if ($version) {
-                return $version
+            $fileAliasVersion = Get-Content $aliasPath -Raw -Encoding UTF8 | ForEach-Object { $_.Trim() }
+            if ($fileAliasVersion -and $fileAliasVersion -ne $Version) {
+                $resolvedVersion = $fileAliasVersion
+                Write-Output "Usando alias guardado '$Version' -> '$resolvedVersion'"
             }
         }
         catch {
-            # Ignore errors
+            Write-NvmError "Error al leer alias '$Version': $($_.Exception.Message)"
+            return
         }
     }
-    
-    # Si no se detecta en PATH, intentar leer la versión activa guardada
-    $activeVersion = Get-NvmActiveVersion
-    if ($activeVersion) {
-        return $activeVersion
-    }
-    
-    return $null
-}
 
-# Función para guardar la versión activa
-function Set-NvmActiveVersion {
-    param([string]$Version)
-    
-    $activeFile = "$NVM_DIR\.active_version"
+    $nodePath = "$NVM_DIR\$resolvedVersion"
+    if (!(Test-Path $nodePath)) {
+        Write-NvmError "Versión $resolvedVersion no está instalada. Instálala primero con: nvm install $resolvedVersion"
+        return
+    }
+
+    # Crear enlaces simbólicos en lugar de modificar PATH
     try {
-        $Version | Out-File -FilePath $activeFile -Encoding UTF8 -Force
+        Set-NvmSymlinks $resolvedVersion
     }
     catch {
-        Write-NvmError "Error al guardar versión activa: $($_.Exception.Message)"
+        Write-NvmError "Error al crear enlaces simbólicos: $($_.Exception.Message)"
+        return
     }
+
+    # Establecer variable de entorno para compatibilidad con Starship y otros tools
+    $env:NODE_VERSION = $resolvedVersion
+
+    # Guardar la versión activa para persistencia entre sesiones
+    Set-NvmActiveVersion $resolvedVersion
+
+    Write-Output "Ahora usando Node.js $resolvedVersion"
 }
 
-# Función para obtener la versión activa guardada
-function Get-NvmActiveVersion {
-    $activeFile = "$NVM_DIR\.active_version"
-    if (Test-Path $activeFile) {
+function Get-Version {
+    if (!(Test-Path $NVM_DIR)) { Write-Output "No hay versiones instaladas."; return }
+    Get-ChildItem -Path $NVM_DIR -Directory | Where-Object { $_.Name -match "^v\d" } | ForEach-Object { Write-Output $_.Name }
+}
+
+function Get-RemoteVersion {
+    Write-Output "Obteniendo lista de versiones disponibles..."
+    try {
+        $versions = Get-NvmVersionsWithCache
+    }
+    catch {
+        Write-NvmError "Error al obtener versiones remotas"
+        return
+    }
+        
+    # Procesar versiones para agregar etiquetas (inspirado en nvm.fish)
+    $processedVersions = @()
+        
+    foreach ($ver in $versions) {
+        $label = ""
+        if ($ver.version -eq $versions[0].version) {
+            $label = " latest"
+        }
+        elseif ($ver.lts) {
+            $label = " lts/$($ver.lts.ToLower())"
+        }
+        $processedVersions += "$($ver.version)$label"
+    }    $processedVersions | ForEach-Object { Write-Output $_ }
+}
+
+function Get-CurrentVersion {
+    # Primero intentar con enlaces simbólicos
+    $currentNodePath = "$NVM_DIR\current\bin\node.exe"
+    if (Test-Path $currentNodePath) {
         try {
-            $version = Get-Content $activeFile -Raw -Encoding UTF8 | ForEach-Object { $_.Trim() }
-            return $version
+            $version = & $currentNodePath --version 2>$null
+            if ($version) {
+                Write-Output "Versión actual: $version"
+                return
+            }
         }
         catch {
-            # Ignore errors
-        }
-    }
-    return $null
-}
-
-# Función auxiliar para verificar si hay Node.js del sistema
-function Test-NvmSystemNode {
-    # Check if there's a system Node.js installation
-    $systemPaths = @(
-        "$env:SystemDrive\Windows\System32\node.exe",
-        "$env:ProgramFiles\nodejs\node.exe",
-        "$env:ProgramFiles(x86)\nodejs\node.exe"
-    )
-
-    foreach ($path in $systemPaths) {
-        if (Test-Path $path) {
-            return $true
+            # Ignorar errores y continuar
         }
     }
 
-    return $false
-}
-
-# Función auxiliar para obtener la versión del sistema
-function Get-NvmSystemVersion {
-    $systemPaths = @(
-        "$env:SystemDrive\Windows\System32\node.exe",
-        "$env:ProgramFiles\nodejs\node.exe",
-        "$env:ProgramFiles(x86)\nodejs\node.exe"
-    )
-
-    foreach ($path in $systemPaths) {
-        if (Test-Path $path) {
-            try {
-                $version = & $path --version 2>$null
-                if ($version) {
-                    return $version
-                }
-            }
-            catch {
-                # Ignore errors
-            }
+    # Si Get-Command falla, intentar ejecutar directamente
+    try {
+        $version = & node --version 2>$null
+        if ($version) {
+            Write-Output "Versión actual: $version"
+            return
         }
     }
+    catch {
+        # Ignorar errores
+    }
 
-    return $null
+    # Si todo falla, verificar si hay alguna versión de nvm en PATH
+    $nvmPaths = $env:PATH -split ';' | Where-Object { $_ -like "*nvm*" -and $_ -like "*current*" }
+    if ($nvmPaths) {
+        Write-Output "Node.js no está disponible. Usa 'nvm use <versión>' para activar una versión."
+    }
+    else {
+        Write-Output "Node.js no está disponible. No hay versiones de nvm activas."
+    }
 }
 
-# Función auxiliar para escribir errores
-function Write-NvmError {
-    <#
-    .SYNOPSIS
-        Writes an error message to the console
-    .DESCRIPTION
-        Outputs error messages with appropriate formatting
-    .PARAMETER Message
-        The error message to display
-    #>
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Message
-    )
+function New-NvmAlias {
+    param([string]$Name, [string]$Version)
 
-    Write-Host "Error: $Message" -ForegroundColor Red
+    if ([string]::IsNullOrWhiteSpace($Name) -or [string]::IsNullOrWhiteSpace($Version)) {
+        Write-NvmError "Nombre y versión son requeridos. Uso: nvm alias <nombre> <versión>"
+        return
+    }
+
+    $aliasPath = "$NVM_DIR\alias\$Name"
+
+    # Crear directorio si no existe
+    if (!(Test-Path "$NVM_DIR\alias")) {
+        New-Item -ItemType Directory -Path "$NVM_DIR\alias" -Force | Out-Null
+    }
+
+    # Verificar que la versión existe
+    $versionPath = "$NVM_DIR\$Version"
+    if (!(Test-Path $versionPath)) {
+        Write-NvmError "Versión $Version no está instalada. Instálala primero."
+        return
+    }
+
+    # Crear el archivo de alias
+    try {
+        $Version | Out-File -FilePath $aliasPath -Encoding UTF8 -Force
+        Write-Output "Alias '$Name' creado para $Version"
+    }
+    catch {
+        Write-NvmError "Error al crear alias: $($_.Exception.Message)"
+    }
 }
 
-# Función para limpiar versiones antiguas
+function Remove-NvmAlias {
+    param([string]$Name)
+
+    if ([string]::IsNullOrWhiteSpace($Name)) {
+        Write-NvmError "Nombre del alias es requerido. Uso: nvm unalias <nombre>"
+        return
+    }
+
+    $aliasPath = "$NVM_DIR\alias\$Name"
+
+    if (Test-Path $aliasPath) {
+        try {
+            Remove-Item $aliasPath -Force
+            Write-Output "Alias '$Name' eliminado"
+        }
+        catch {
+            Write-NvmError "Error al eliminar alias: $($_.Exception.Message)"
+        }
+    }
+    else {
+        Write-Output "Alias '$Name' no existe"
+    }
+}
+
+function Get-NvmAliases {
+    $aliasDir = "$NVM_DIR\alias"
+    if (!(Test-Path $aliasDir)) {
+        Write-Output "No hay aliases definidos"
+        return
+    }
+
+    $aliases = Get-ChildItem -Path $aliasDir -File
+    if ($aliases.Count -eq 0) {
+        Write-Output "No hay aliases definidos"
+        return
+    }
+
+    Write-Output "Aliases definidos:"
+    foreach ($alias in $aliases) {
+        try {
+            $version = Get-Content $alias.FullName -Raw -Encoding UTF8 | ForEach-Object { $_.Trim() }
+            Write-Output "  $($alias.Name) -> $version"
+        }
+        catch {
+            Write-Output "  $($alias.Name) -> [error al leer]"
+        }
+    }
+}
+
 function Cleanup-Nvm {
     if (!(Test-Path $NVM_DIR)) {
         Write-NvmError "No hay versiones instaladas."
@@ -1401,6 +1510,7 @@ function Cleanup-Nvm {
     
     Write-Output "Limpieza completada."
 }
+
 function Set-NvmDefaultVersion {
     param([string]$Version)
     
@@ -1434,6 +1544,7 @@ function Set-NvmDefaultVersion {
         Write-Output "Integrado en perfil de PowerShell. Reinicia la terminal para aplicar."
     }
 }
+
 function Update-Nvm {
     $url = "https://raw.githubusercontent.com/FreddyCamposeco/nvm-windows/master/nvm.ps1"
     $tempPath = "$NVM_DIR\temp\nvm.ps1.new"
@@ -1462,6 +1573,7 @@ function Update-Nvm {
         if (Test-Path $tempPath) { Remove-Item $tempPath -Force }
     }
 }
+
 function Test-NvmInstallation {
     Write-Output "Verificando instalación de nvm-windows..."
 
@@ -1484,10 +1596,17 @@ function Test-NvmInstallation {
         $issues += "Wrapper CMD no encontrado: $cmdPath"
     }
 
-    # Verificar PATH
+    # Verificar directorio current
+    $currentDir = "$NVM_DIR\current"
+    if (!(Test-Path $currentDir)) {
+        $issues += "Directorio current no existe: $currentDir"
+    }
+
+    # Verificar PATH contiene la ubicación virtual
     $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
-    if ($currentPath -notlike "*$NVM_DIR*") {
-        $issues += "nvm no está en PATH de usuario"
+    $currentBinDir = "$NVM_DIR\current\bin"
+    if ($currentPath -notlike "*$currentBinDir*") {
+        $issues += "Ubicación virtual no está en PATH de usuario: $currentBinDir"
     }
 
     if ($issues.Count -eq 0) {
@@ -1502,6 +1621,213 @@ function Test-NvmInstallation {
         return $false
     }
 }
+
+function Get-NvmCurrentVersion {
+    # Primero intentar detectar desde enlaces simbólicos
+    $currentNodePath = "$NVM_DIR\current\bin\node.exe"
+    if (Test-Path $currentNodePath) {
+        try {
+            $version = & $currentNodePath --version 2>$null
+            if ($version) {
+                return $version
+            }
+        }
+        catch {
+            # Ignore errors
+        }
+    }
+
+    # Si no se detecta desde enlaces, intentar detectar desde PATH
+    $nodePath = Get-Command node -ErrorAction SilentlyContinue
+    if ($nodePath) {
+        try {
+            $version = & node --version 2>$null
+            if ($version) {
+                return $version
+            }
+        }
+        catch {
+            # Ignore errors
+        }
+    }
+
+    # Si no se detecta en PATH, intentar leer la versión activa guardada
+    $activeVersion = Get-NvmActiveVersion
+    if ($activeVersion) {
+        return $activeVersion
+    }
+
+    return $null
+}
+
+function Set-NvmActiveVersion {
+    param([string]$Version)
+    
+    $activeFile = "$NVM_DIR\.active_version"
+    try {
+        $Version | Out-File -FilePath $activeFile -Encoding UTF8 -Force
+    }
+    catch {
+        Write-NvmError "Error al guardar versión activa: $($_.Exception.Message)"
+    }
+}
+
+function Get-NvmActiveVersion {
+    $activeFile = "$NVM_DIR\.active_version"
+    if (Test-Path $activeFile) {
+        try {
+            $version = Get-Content $activeFile -Raw -Encoding UTF8 | ForEach-Object { $_.Trim() }
+            return $version
+        }
+        catch {
+            # Ignore errors
+        }
+    }
+    return $null
+}
+
+# Función para crear enlaces simbólicos para la versión activa
+function Set-NvmSymlinks {
+    param([string]$Version)
+
+    $currentDir = "$NVM_DIR\current"
+    $versionDir = "$NVM_DIR\$Version"
+
+    # Crear directorio current si no existe
+    if (!(Test-Path $currentDir)) {
+        New-Item -ItemType Directory -Path $currentDir -Force | Out-Null
+    }
+
+    # Crear subdirectorios necesarios
+    $binDir = "$currentDir\bin"
+    if (!(Test-Path $binDir)) {
+        New-Item -ItemType Directory -Path $binDir -Force | Out-Null
+    }
+
+    # Eliminar enlaces simbólicos existentes
+    Get-ChildItem -Path $binDir -File | ForEach-Object {
+        if ($_.LinkType -eq "SymbolicLink") {
+            Remove-Item $_.FullName -Force
+        }
+    }
+
+    # Crear enlaces simbólicos para los ejecutables principales
+    $executables = @("node.exe", "npm.cmd", "npx.cmd", "yarn.cmd")
+    foreach ($exe in $executables) {
+        $sourcePath = "$versionDir\$exe"
+        $targetPath = "$binDir\$exe"
+
+        if (Test-Path $sourcePath) {
+            try {
+                New-Item -ItemType SymbolicLink -Path $targetPath -Target $sourcePath -Force | Out-Null
+            }
+            catch {
+                # Si falla el enlace simbólico, intentar copia (para sistemas sin privilegios)
+                Copy-Item $sourcePath $targetPath -Force
+            }
+        }
+    }
+
+    # Crear enlace simbólico para node_modules global si existe
+    $globalModulesDir = "$versionDir\node_modules"
+    if (Test-Path $globalModulesDir) {
+        $targetModulesDir = "$currentDir\node_modules"
+        if (Test-Path $targetModulesDir) {
+            Remove-Item $targetModulesDir -Recurse -Force
+        }
+        try {
+            New-Item -ItemType SymbolicLink -Path $targetModulesDir -Target $globalModulesDir -Force | Out-Null
+        }
+        catch {
+            # Si falla, copiar directorio
+            Copy-Item $globalModulesDir $targetModulesDir -Recurse -Force
+        }
+    }
+}
+
+# Función para inicializar PATH con ubicación virtual
+function Initialize-NvmPath {
+    $currentBinDir = "$NVM_DIR\current\bin"
+
+    # Verificar si ya está en PATH
+    $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    if ($currentPath -notlike "*$currentBinDir*") {
+        $newPath = "$currentBinDir;$currentPath"
+        [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
+        Write-Output "Agregado $currentBinDir al PATH de usuario"
+    }
+}
+
+# Función de inicialización automática
+function Initialize-Nvm {
+    # Inicializar PATH con ubicación virtual
+    Initialize-NvmPath
+
+    # Si hay una versión activa guardada, recrear enlaces simbólicos
+    $activeVersion = Get-NvmActiveVersion
+    if ($activeVersion -and (Test-Path "$NVM_DIR\$activeVersion")) {
+        try {
+            Set-NvmSymlinks $activeVersion
+        }
+        catch {
+            # Silenciar errores durante inicialización
+        }
+    }
+    elseif ($env:nvm_default_version -and (Test-Path "$NVM_DIR\$env:nvm_default_version")) {
+        # Si no hay versión activa pero hay versión por defecto, usarla
+        try {
+            Set-NvmSymlinks $env:nvm_default_version
+            Set-NvmActiveVersion $env:nvm_default_version
+        }
+        catch {
+            # Silenciar errores durante inicialización
+        }
+    }
+}
+
+# Función para migrar del sistema PATH al sistema de enlaces simbólicos
+function Migrate-NvmToSymlinks {
+    Write-Output "Migrando nvm-windows al sistema de enlaces simbólicos..."
+
+    # Inicializar PATH con ubicación virtual
+    Initialize-NvmPath
+
+    # Obtener versión activa actual
+    $currentVersion = Get-NvmCurrentVersion
+    if ($currentVersion) {
+        Write-Output "Configurando enlaces simbólicos para versión actual: $currentVersion"
+        try {
+            Set-NvmSymlinks $currentVersion
+            Write-Output "✅ Migración completada"
+        }
+        catch {
+            Write-NvmError "Error durante la migración: $($_.Exception.Message)"
+            return
+        }
+    }
+    else {
+        Write-Output "No hay versión activa. Usa 'nvm use <versión>' para activar una versión."
+    }
+
+    # Limpiar PATH antiguo (opcional - pedir confirmación)
+    $pathEntries = $env:PATH -split ';'
+    $oldNvmPaths = $pathEntries | Where-Object { $_ -like "*$NVM_DIR\v*" -or $_ -like "*node-*-win-*" }
+    if ($oldNvmPaths) {
+        Write-Output ""
+        Write-Output "Se encontraron las siguientes entradas antiguas en PATH:"
+        $oldNvmPaths | ForEach-Object { Write-Output "  $_" }
+        $confirm = Read-Host "¿Quieres limpiar estas entradas del PATH? (y/N)"
+        if ($confirm -eq 'y' -or $confirm -eq 'Y') {
+            $cleanedPath = $pathEntries | Where-Object { $_ -notlike "*$NVM_DIR\v*" -and $_ -notlike "*node-*-win-*" } | Where-Object { $_ -ne "" }
+            $env:PATH = $cleanedPath -join ';'
+            [Environment]::SetEnvironmentVariable("Path", $env:PATH, "User")
+            Write-Output "✅ PATH limpiado"
+        }
+    }
+}
+
+# Inicializar automáticamente al cargar el script
+Initialize-Nvm
 
 # Lógica principal
 switch ($Command) {
@@ -1531,6 +1857,7 @@ switch ($Command) {
     "aliases" { Get-NvmAliases }
     "doctor" { Test-NvmInstallation }
     "cleanup" { Cleanup-Nvm }
+    "migrate" { Migrate-NvmToSymlinks }
     "self-update" { Update-Nvm }
     "set-colors" { if ($Version) { Set-NvmColors $Version } else { Write-Output "Especifica esquema de colores" } }
     "set-default" { if ($Version) { Set-NvmDefaultVersion $Version } else { Write-Output "Especifica una versión" } }
