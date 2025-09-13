@@ -25,8 +25,8 @@ Una adaptación completa de [nvm](https://github.com/nvm-sh/nvm) para Windows na
 
 ```powershell
 # Descarga e instala automáticamente
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/FreddyCamposeco/nvm-windows/master/install.ps1" -OutFile "install.ps1"
-.\install.ps1
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/FreddyCamposeco/nvm-windows/master/install-nvm.ps1" -OutFile "install-nvm.ps1"
+.\install-nvm.ps1
 ```
 
 ### Instalación Manual
@@ -67,30 +67,30 @@ npm --version   # 10.x.x
 
 ### Gestión de Versiones
 
-| Comando | Descripción | Ejemplo |
-|---------|-------------|---------|
+| Comando                 | Descripción                    | Ejemplo               |
+| ----------------------- | ------------------------------ | --------------------- |
 | `nvm install <versión>` | Instala una versión específica | `nvm install 18.19.0` |
-| `nvm use <versión>` | Cambia a una versión | `nvm use 18.19.0` |
-| `nvm ls` / `nvm list` | Lista versiones instaladas | `nvm ls` |
-| `nvm current` | Muestra versión actual | `nvm current` |
-| `nvm ls-remote` | Lista versiones disponibles | `nvm ls-remote` |
+| `nvm use <versión>`     | Cambia a una versión           | `nvm use 18.19.0`     |
+| `nvm ls` / `nvm list`   | Lista versiones instaladas     | `nvm ls`              |
+| `nvm current`           | Muestra versión actual         | `nvm current`         |
+| `nvm ls-remote`         | Lista versiones disponibles    | `nvm ls-remote`       |
 
 ### Sistema de Alias
 
-| Comando | Descripción | Ejemplo |
-|---------|-------------|---------|
-| `nvm alias <nombre> <versión>` | Crea un alias | `nvm alias lts 18.19.0` |
-| `nvm aliases` | Lista todos los aliases | `nvm aliases` |
-| `nvm unalias <nombre>` | Elimina un alias | `nvm unalias lts` |
-| `nvm use <alias>` | Usa un alias | `nvm use lts` |
+| Comando                        | Descripción             | Ejemplo                 |
+| ------------------------------ | ----------------------- | ----------------------- |
+| `nvm alias <nombre> <versión>` | Crea un alias           | `nvm alias lts 18.19.0` |
+| `nvm aliases`                  | Lista todos los aliases | `nvm aliases`           |
+| `nvm unalias <nombre>`         | Elimina un alias        | `nvm unalias lts`       |
+| `nvm use <alias>`              | Usa un alias            | `nvm use lts`           |
 
 ### Utilidades
 
-| Comando | Descripción | Ejemplo |
-|---------|-------------|---------|
-| `nvm doctor` | Verifica instalación | `nvm doctor` |
-| `nvm set-colors <esquema>` | Configura colores | `nvm set-colors bygre` |
-| `nvm help` | Muestra ayuda completa | `nvm help` |
+| Comando                    | Descripción            | Ejemplo                |
+| -------------------------- | ---------------------- | ---------------------- |
+| `nvm doctor`               | Verifica instalación   | `nvm doctor`           |
+| `nvm set-colors <esquema>` | Configura colores      | `nvm set-colors bygre` |
+| `nvm help`                 | Muestra ayuda completa | `nvm help`             |
 
 ## 🎨 Formato Mejorado de Salida
 
@@ -145,17 +145,17 @@ nvm set-colors cyanm
 
 ### Códigos de Color Disponibles
 
-| Código | Color | Descripción |
-|--------|-------|-------------|
-| `r` | Rojo | Errores y no instaladas |
-| `g` | Verde | Versión actual |
-| `b` | Azul | Versiones instaladas |
-| `y` | Amarillo | Advertencias |
-| `c` | Cyan | Versión del sistema |
-| `m` | Magenta | Versiones LTS |
-| `k` | Negro | Texto normal |
-| `e` | Gris claro | Por defecto |
-| `R`/`G`/`B`/`C`/`M`/`Y`/`K`/`W`/`E` | **Negrita** | Versiones en negrita |
+| Código                              | Color       | Descripción             |
+| ----------------------------------- | ----------- | ----------------------- |
+| `r`                                 | Rojo        | Errores y no instaladas |
+| `g`                                 | Verde       | Versión actual          |
+| `b`                                 | Azul        | Versiones instaladas    |
+| `y`                                 | Amarillo    | Advertencias            |
+| `c`                                 | Cyan        | Versión del sistema     |
+| `m`                                 | Magenta     | Versiones LTS           |
+| `k`                                 | Negro       | Texto normal            |
+| `e`                                 | Gris claro  | Por defecto             |
+| `R`/`G`/`B`/`C`/`M`/`Y`/`K`/`W`/`E` | **Negrita** | Versiones en negrita    |
 
 ### Variables de Entorno
 
@@ -260,15 +260,48 @@ function nvm { & "$env:USERPROFILE\.nvm\nvm.ps1" @args }
 
 ## 🗑️ Desinstalación
 
+### Desinstalación Remota (Sin Clonar)
+
+Para desinstalar nvm-windows sin clonar el repositorio:
+
 ```powershell
-# Desinstalar completamente
+# Descarga el script de desinstalación
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/FreddyCamposeco/nvm-windows/master/install-nvm.ps1" -OutFile "uninstall-nvm.ps1"
+
+# Ejecuta la desinstalación
+.\uninstall-nvm.ps1 -Uninstall
+```
+
+**El proceso de desinstalación:**
+
+- ✅ Remueve nvm del PATH del usuario y sistema
+- ✅ Elimina archivos principales (`nvm.ps1`, `nvm.cmd`)
+- ✅ Remueve alias del perfil de PowerShell
+- ✅ Pregunta si quieres eliminar versiones instaladas
+- ✅ Limpieza completa del directorio si está vacío
+
+### Desinstalación Local
+
+Si tienes el repositorio clonado:
+
+```powershell
+# Usando el script principal
 .\install.ps1 -Action uninstall
 
 # O usando el script alternativo
 .\install-nvm.ps1 -Uninstall
 ```
 
-**Nota**: La desinstalación conserva las versiones de Node.js instaladas por seguridad.
+### Verificación de Desinstalación
+
+```powershell
+# Verifica que nvm ya no esté disponible
+nvm
+
+# Deberías ver un error indicando que nvm no está disponible
+```
+
+**Nota**: La desinstalación conserva las versiones de Node.js instaladas por seguridad. Si quieres eliminar todo, confirma cuando el script te pregunte.
 
 ## 🤝 Contribución
 

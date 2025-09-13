@@ -16,51 +16,136 @@ Write-Host "=== Instalador de nvm para Windows ===" -ForegroundColor Cyan
 Write-Host "Repositorio: https://github.com/FreddyCamposeco/nvm-windows" -ForegroundColor Gray
 Write-Host ""
 
-if ($Uninstall) {
+# Función mejorada para desinstalación
+function Uninstall-NVM {
+    Write-Host "=== Desinstalando nvm-windows ===" -ForegroundColor Yellow
+    Write-Host "Repositorio: https://github.com/FreddyCamposeco/nvm-windows" -ForegroundColor Gray
+    Write-Host ""
+
+    # Confirmar desinstalación
+    $confirm = Read-Host "¿Estás seguro de que quieres desinstalar nvm-windows? (s/n)"
+    if ($confirm -ne "s" -and $confirm -ne "S") {
+        Write-Host "Desinstalación cancelada." -ForegroundColor Red
+        exit 0
+    }
+
     Write-Host "Desinstalando nvm para Windows..." -ForegroundColor Yellow
+
+    # Verificar si está instalado
+    $isInstalled = Test-Path "$NVM_DIR\nvm.ps1"
+    if (-not $isInstalled) {
+        Write-Host "⚠ nvm-windows no parece estar instalado en $NVM_DIR" -ForegroundColor Yellow
+        $continue = Read-Host "¿Continuar de todos modos? (s/n)"
+        if ($continue -ne "s" -and $continue -ne "S") {
+            Write-Host "Desinstalación cancelada." -ForegroundColor Red
+            exit 0
+        }
+    }
 
     # Remover del PATH
     $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
     if ($currentPath -like "*$NVM_DIR*") {
-        $newPath = ($currentPath -split ';' | Where-Object { $_ -ne $NVM_DIR }) -join ';'
+        $newPath = ($currentPath -split ';' | Where-Object { $_ -ne $NVM_DIR -and $_ -notlike "*nvm*" }) -join ';'
         [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
-        Write-Host "✓ Removido del PATH" -ForegroundColor Green
+        Write-Host "✓ Removido del PATH del usuario" -ForegroundColor Green
+    } else {
+        Write-Host "ℹ nvm no estaba en PATH" -ForegroundColor Gray
     }
 
-    # Remover archivos
-    if (Test-Path "$NVM_DIR\nvm.ps1") {
-        Remove-Item "$NVM_DIR\nvm.ps1"
-        Write-Host "✓ Script principal removido" -ForegroundColor Green
-    }
-    if (Test-Path "$NVM_DIR\nvm.cmd") {
-        Remove-Item "$NVM_DIR\nvm.cmd"
-        Write-Host "✓ Wrapper CMD removido" -ForegroundColor Green
+    # Remover del PATH del sistema (por si acaso)
+    $systemPath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+    if ($systemPath -like "*$NVM_DIR*") {
+        $newSystemPath = ($systemPath -split ';' | Where-Object { $_ -ne $NVM_DIR -and $_ -notlike "*nvm*" }) -join ';'
+        [Environment]::SetEnvironmentVariable("Path", $newSystemPath, "Machine")
+        Write-Host "✓ Removido del PATH del sistema" -ForegroundColor Green
     }
 
-    # Remover directorio si está vacío
-    if (Test-Path $NVM_DIR) {
-        $items = Get-ChildItem $NVM_DIR
-        if ($items.Count -eq 0) {
-            Remove-Item $NVM_DIR
-            Write-Host "✓ Directorio $NVM_DIR removido" -ForegroundColor Green
-        } else {
-            Write-Host "⚠ Directorio $NVM_DIR no está vacío, conserva versiones instaladas" -ForegroundColor Yellow
+    # Remover archivos principales
+    $filesToRemove = @(
+        "$NVM_DIR\nvm.ps1",
+        "$NVM_DIR\nvm.cmd",
+        "$NVM_DIR\nvm-wrapper.cmd"
+    )
+
+    foreach ($file in $filesToRemove) {
+        if (Test-Path $file) {
+            try {
+                Remove-Item $file -Force
+                Write-Host "✓ Removido: $(Split-Path $file -Leaf)" -ForegroundColor Green
+            } catch {
+                Write-Host "⚠ Error removiendo $(Split-Path $file -Leaf): $($_.Exception.Message)" -ForegroundColor Yellow
+            }
         }
     }
 
-    # Remover alias del perfil
+    # Remover alias del perfil de PowerShell
     $profilePath = $PROFILE
     if (Test-Path $profilePath) {
-        $profileContent = Get-Content $profilePath -Raw
-        $newContent = $profileContent -replace "(?s)# Alias for nvm-windows.*?\nSet-Alias nvm.*?\n", ""
-        if ($newContent -ne $profileContent) {
-            $newContent | Set-Content $profilePath
-            Write-Host "✓ Alias removido del perfil de PowerShell" -ForegroundColor Green
+        try {
+            $profileContent = Get-Content $profilePath -Raw -ErrorAction Stop
+            $newContent = $profileContent -replace "(?s)# Alias for nvm-windows.*?\nSet-Alias nvm.*?\n", ""
+            $newContent = $newContent -replace "(?s)# Alias for nvm-windows.*?\r?\nSet-Alias nvm.*?\r?\n", ""
+            if ($newContent -ne $profileContent) {
+                $newContent | Set-Content $profilePath -Force
+                Write-Host "✓ Alias removido del perfil de PowerShell" -ForegroundColor Green
+            } else {
+                Write-Host "ℹ No se encontró alias en el perfil" -ForegroundColor Gray
+            }
+        } catch {
+            Write-Host "⚠ Error procesando perfil de PowerShell: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+    }
+
+    # Verificar si hay versiones instaladas
+    $versionsDir = "$NVM_DIR"
+    if (Test-Path $versionsDir) {
+        $versionFolders = Get-ChildItem $versionsDir -Directory | Where-Object { $_.Name -match "^v\d" }
+        $aliasFiles = Get-ChildItem $versionsDir -File | Where-Object { $_.Name -notmatch "\.(ps1|cmd)$" }
+
+        if ($versionFolders.Count -gt 0 -or $aliasFiles.Count -gt 0) {
+            Write-Host ""
+            Write-Host "⚠ Se encontraron versiones instaladas y/o archivos:" -ForegroundColor Yellow
+            if ($versionFolders.Count -gt 0) {
+                Write-Host "  Versiones: $($versionFolders.Count)" -ForegroundColor White
+                $versionFolders | ForEach-Object { Write-Host "    - $($_.Name)" -ForegroundColor Gray }
+            }
+            if ($aliasFiles.Count -gt 0) {
+                Write-Host "  Archivos: $($aliasFiles.Count)" -ForegroundColor White
+                $aliasFiles | ForEach-Object { Write-Host "    - $($_.Name)" -ForegroundColor Gray }
+            }
+
+            $removeVersions = Read-Host "¿Quieres eliminar también las versiones instaladas? (s/n)"
+            if ($removeVersions -eq "s" -or $removeVersions -eq "S") {
+                try {
+                    Remove-Item $versionsDir -Recurse -Force
+                    Write-Host "✓ Todas las versiones y archivos eliminados" -ForegroundColor Green
+                } catch {
+                    Write-Host "⚠ Error eliminando versiones: $($_.Exception.Message)" -ForegroundColor Yellow
+                }
+            } else {
+                Write-Host "ℹ Versiones conservadas en $NVM_DIR" -ForegroundColor Gray
+            }
+        } else {
+            # Si no hay versiones, eliminar el directorio completo
+            try {
+                Remove-Item $NVM_DIR -Force
+                Write-Host "✓ Directorio $NVM_DIR eliminado" -ForegroundColor Green
+            } catch {
+                Write-Host "⚠ Error eliminando directorio: $($_.Exception.Message)" -ForegroundColor Yellow
+            }
         }
     }
 
     Write-Host ""
-    Write-Host "Desinstalación completada. Reinicia la terminal." -ForegroundColor Green
+    Write-Host "=== Desinstalación Completada ===" -ForegroundColor Cyan
+    Write-Host "✓ nvm-windows ha sido desinstalado" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "Nota: Reinicia PowerShell para que los cambios surtan efecto completo." -ForegroundColor Yellow
+    Write-Host "Repositorio: https://github.com/FreddyCamposeco/nvm-windows" -ForegroundColor Gray
+}
+
+if ($Uninstall) {
+    Uninstall-NVM
     exit 0
 }
 
