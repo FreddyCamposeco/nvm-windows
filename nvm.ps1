@@ -162,15 +162,39 @@ function Get-RemoteVersion {
     $versions | Select-Object -ExpandProperty version | ForEach-Object { Write-Output $_ }
 }
 
-# Función para mostrar versión actual
+# Función para mostrar la versión actual
 function Get-CurrentVersion {
+    # Primero intentar con Get-Command
     $nodePath = Get-Command node -ErrorAction SilentlyContinue
     if ($nodePath) {
-        $version = & node --version
-        Write-Output "Versión actual: $version"
+        try {
+            $version = & node --version 2>$null
+            if ($version) {
+                Write-Output "Versión actual: $version"
+                return
+            }
+        } catch {
+            # Ignorar errores y continuar
+        }
     }
-    else {
-        Write-Output "Node.js no está en PATH"
+
+    # Si Get-Command falla, intentar ejecutar directamente
+    try {
+        $version = & node --version 2>$null
+        if ($version) {
+            Write-Output "Versión actual: $version"
+            return
+        }
+    } catch {
+        # Ignorar errores
+    }
+
+    # Si todo falla, verificar si hay alguna versión de nvm en PATH
+    $nvmPaths = $env:PATH -split ';' | Where-Object { $_ -like "*nvm*" -and $_ -like "*v*" }
+    if ($nvmPaths) {
+        Write-Output "Node.js no está en PATH. Usa 'nvm use <versión>' para activar una versión."
+    } else {
+        Write-Output "Node.js no está en PATH. No hay versiones de nvm activas."
     }
 }
 
