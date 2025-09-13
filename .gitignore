@@ -4,8 +4,8 @@
 
 # Directorios de versiones (opcional, si no quieres commitear)
 # .nvm/
-_nvm/
 _nvm.fish/
+_nvm/
 
 # Archivos de sistema
 .DS_Store
