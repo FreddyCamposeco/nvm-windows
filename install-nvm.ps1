@@ -224,28 +224,33 @@ Write-Host "✓ Agregado al PATH" -ForegroundColor Green
 Write-Host "✓ Alias configurado" -ForegroundColor Green
 Write-Host ""
 
-# Instalar versión LTS por defecto
-Write-Host "Instalando versión LTS de Node.js por defecto..." -ForegroundColor Yellow
-try {
-    # Ejecutar nvm install lts usando el path completo
-    $installResult = & "$NVM_DIR\nvm.ps1" install lts 2>&1
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "✓ Versión LTS instalada correctamente" -ForegroundColor Green
-
-        # Configurar como versión por defecto
-        $setDefaultResult = & "$NVM_DIR\nvm.ps1" set-default lts 2>&1
+# Preguntar si quiere instalar versión LTS automáticamente
+$installLts = Read-Host "¿Quieres instalar automáticamente la versión LTS de Node.js? (s/n)"
+if ($installLts -eq "s" -or $installLts -eq "S") {
+    Write-Host "Instalando versión LTS de Node.js..." -ForegroundColor Yellow
+    try {
+        # Ejecutar nvm install lts usando el path completo
+        $installResult = & "$NVM_DIR\nvm.ps1" install lts 2>&1
         if ($LASTEXITCODE -eq 0) {
-            Write-Host "✓ Versión LTS configurada como por defecto" -ForegroundColor Green
+            Write-Host "✓ Versión LTS instalada correctamente" -ForegroundColor Green
+
+            # Configurar como versión por defecto
+            $setDefaultResult = & "$NVM_DIR\nvm.ps1" set-default lts 2>&1
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "✓ Versión LTS configurada como por defecto" -ForegroundColor Green
+            } else {
+                Write-Host "⚠ No se pudo configurar versión por defecto: $setDefaultResult" -ForegroundColor Yellow
+            }
         } else {
-            Write-Host "⚠ No se pudo configurar versión por defecto: $setDefaultResult" -ForegroundColor Yellow
+            Write-Host "⚠ No se pudo instalar versión LTS: $installResult" -ForegroundColor Yellow
+            Write-Host "  Puedes instalarla manualmente con: nvm install lts" -ForegroundColor Gray
         }
-    } else {
-        Write-Host "⚠ No se pudo instalar versión LTS: $installResult" -ForegroundColor Yellow
+    } catch {
+        Write-Host "⚠ Error instalando versión LTS: $($_.Exception.Message)" -ForegroundColor Yellow
         Write-Host "  Puedes instalarla manualmente con: nvm install lts" -ForegroundColor Gray
     }
-} catch {
-    Write-Host "⚠ Error instalando versión por defecto: $($_.Exception.Message)" -ForegroundColor Yellow
-    Write-Host "  Puedes instalarla manualmente con: nvm install lts" -ForegroundColor Gray
+} else {
+    Write-Host "ℹ Instalación de LTS omitida. Puedes instalarla manualmente con: nvm install lts" -ForegroundColor Gray
 }
 
 Write-Host ""

@@ -1,6 +1,7 @@
 # nvm-windows v2.2 🚀
 
 *Node - 🎯 **Comandos Directos**: Usa `nvm` desde cualquier directorio
+
 - 🎨 **Formato Mejorado**: Inspirado en nvm.fish con indicadores visuales
 - 🏷️ **Sistema de Alias Avanzado**: Soporte para `lts`, `latest` y nombres de LTS
 - 🔍 **Diagnóstico Integrado**: Comando `doctor` para verificar instalación
@@ -33,6 +34,7 @@ Available (non-LTS):
   v24.x:        v24.08.00
   v23.x:        v23.09.00
   v22.x:        v22.09.00  ✓
+
 ```Estado-Est%C3%A1vel-brightgreen.svg)](https://github.com/FreddyCamposeco/nvm-windows)
 [![Versión](https://img.shields.io/badge/Versi%C3%B3n-2.3-blue.svg)](https://github.com/FreddyCamposeco/nvm-windows)
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1+-blue.svg)](https://github.com/PowerShell/PowerShell)
@@ -65,7 +67,7 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/FreddyCamposeco/nvm-wi
 .\install-nvm.ps1
 ```
 
-**Nota**: La instalación automática incluye la instalación de la versión LTS de Node.js y la configura como versión por defecto.
+**Nota**: El instalador preguntará si quieres instalar automáticamente la versión LTS de Node.js.
 
 ## Instalación Manual
 
@@ -89,12 +91,16 @@ nvm doctor
 
 ## 🚀 Uso Rápido
 
-Después de la instalación automática, ya tienes Node.js LTS instalado y configurado:
+Después de la instalación, puedes instalar Node.js LTS si no lo hiciste durante la instalación:
 
 ```powershell
-# Verificar que todo funciona
+# Si elegiste instalar LTS durante la instalación:
 node --version  # Deberías ver v22.x.x (o la versión LTS actual)
 npm --version   # Deberías ver la versión de npm
+
+# Si no instalaste LTS, instálalo ahora:
+nvm install lts
+nvm use lts
 
 # Ver todas las versiones disponibles
 nvm ls

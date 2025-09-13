@@ -94,11 +94,13 @@ Describe "nvm-windows Tests" {
                 $result = & .\nvm.ps1 use nonexistentversion 2>&1
                 $resultAsString = if ($result -is [System.Management.Automation.ErrorRecord]) {
                     $result.Exception.Message
-                } else {
+                }
+                else {
                     $result -join "`n"
                 }
                 $resultAsString | Should -Match "no reconocido"
-            } catch {
+            }
+            catch {
                 $_.Exception.Message | Should -Match "no reconocido"
             }
         }
@@ -107,6 +109,22 @@ Describe "nvm-windows Tests" {
             $result = & .\nvm.ps1 install nonexistentversion 2>&1
             # This might succeed or fail depending on network, but shouldn't crash
             $true | Should -Be $true
+        }
+
+        It "Should handle --force flag for uninstall command" {
+            try {
+                $result = & .\nvm.ps1 uninstall 20.0.0 --force 2>&1
+                $resultAsString = if ($result -is [System.Management.Automation.ErrorRecord]) {
+                    $result.Exception.Message
+                }
+                else {
+                    $result -join "`n"
+                }
+                $resultAsString | Should -Match "no está instalada"
+            }
+            catch {
+                $_.Exception.Message | Should -Match "no está instalada"
+            }
         }
     }
 }

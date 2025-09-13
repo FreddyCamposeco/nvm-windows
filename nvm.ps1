@@ -12,12 +12,14 @@ if ($Args -and $Args.Length -gt 1) {
     # Si el segundo argumento parece una opción (empieza con -), no es una versión
     if ($Args[1] -like "-*") {
         $Version = $null
-        $RemainingArgs = $Args[1..($Args.Length-1)]
-    } else {
-        $Version = $Args[1]
-        $RemainingArgs = if ($Args.Length -gt 2) { $Args[2..($Args.Length-1)] } else { @() }
+        $RemainingArgs = $Args[1..($Args.Length - 1)]
     }
-} else {
+    else {
+        $Version = $Args[1]
+        $RemainingArgs = if ($Args.Length -gt 2) { $Args[2..($Args.Length - 1)] } else { @() }
+    }
+}
+else {
     $Version = $null
     $RemainingArgs = @()
 }
@@ -32,7 +34,7 @@ function Show-Help {
     Write-Output "Uso: nvm <comando> [versión]"
     Write-Output "Comandos:"
     Write-Output "  install <versión>    Instala una versión específica de Node.js"
-    Write-Output "  uninstall <versión>  Desinstala una versión específica de Node.js"
+    Write-Output "  uninstall <versión> [--force]  Desinstala una versión específica de Node.js"
     Write-Output "  use <versión>        Cambia a una versión específica o alias"
     Write-Output "  ls                   Lista versiones instaladas con colores"
     Write-Output "  list                 Lista versiones instaladas (sinónimo de ls)"
@@ -65,6 +67,7 @@ function Show-Help {
     Write-Output "Ejemplos:"
     Write-Output "  nvm install 18.19.0     Instala Node.js v18.19.0"
     Write-Output "  nvm uninstall 18.19.0   Desinstala Node.js v18.19.0"
+    Write-Output "  nvm uninstall 18.19.0 --force  Fuerza desinstalación de versión activa"
     Write-Output "  nvm use 18.19.0         Cambia a Node.js v18.19.0"
     Write-Output "  nvm alias lts 18.19.0   Crea alias 'lts' para v18.19.0"
     Write-Output "  nvm use lts             Usa el alias 'lts'"
@@ -87,7 +90,8 @@ function Resolve-Version {
     # Obtener versiones remotas
     try {
         $versions = Get-NvmVersionsWithCache
-    } catch {
+    }
+    catch {
         Write-NvmError "Error al obtener versiones remotas: $($_.Exception.Message)"
         return $null
     }
@@ -100,7 +104,8 @@ function Resolve-Version {
             $ltsVersion = $versions | Where-Object { $_.lts } | Select-Object -First 1
             if ($ltsVersion) {
                 return $ltsVersion.version
-            } else {
+            }
+            else {
                 Write-NvmError "No se encontró una versión LTS"
                 return $null
             }
@@ -110,7 +115,8 @@ function Resolve-Version {
             $ltsVersion = $versions | Where-Object { $_.lts -and $_.lts.ToLower() -eq $Version.ToLower() } | Select-Object -First 1
             if ($ltsVersion) {
                 return $ltsVersion.version
-            } else {
+            }
+            else {
                 Write-NvmError "Alias o versión '$Version' no reconocido. Usa 'latest', 'lts', un nombre de LTS (ej. 'jod'), o una versión específica (ej. '18.19.0')"
                 return $null
             }
@@ -158,7 +164,27 @@ function Install-Node {
         Invoke-WebRequest -Uri $url -OutFile $zipPath -ErrorAction Stop
 
         Write-Output "Extrayendo..."
-        Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force -ErrorAction Stop
+        # Extraer directamente al directorio temporal primero
+        $tempExtractPath = "$NVM_DIR\temp\$Version"
+        if (!(Test-Path $tempExtractPath)) {
+            New-Item -ItemType Directory -Path $tempExtractPath -Force | Out-Null
+        }
+        Expand-Archive -Path $zipPath -DestinationPath $tempExtractPath -Force -ErrorAction Stop
+
+        # Mover el contenido del subdirectorio al directorio final
+        $subDir = Get-ChildItem -Path $tempExtractPath -Directory | Select-Object -First 1
+        if ($subDir) {
+            $subDirPath = $subDir.FullName
+            # Mover todo el contenido al directorio final
+            Get-ChildItem -Path $subDirPath | Move-Item -Destination $extractPath -Force
+        }
+        else {
+            # Si no hay subdirectorio, mover todo directamente
+            Get-ChildItem -Path $tempExtractPath | Move-Item -Destination $extractPath -Force
+        }
+
+        # Limpiar directorio temporal
+        Remove-Item $tempExtractPath -Recurse -Force
 
         Remove-Item $zipPath -Force
         Write-Output "Node.js $Version instalado en $extractPath"
@@ -187,7 +213,8 @@ function Get-NvmVersionsWithCache {
         try {
             $versions = Get-Content $cacheFile -Raw | ConvertFrom-Json
             return $versions
-        } catch {
+        }
+        catch {
             # Cache corrupto, continuar con descarga
         }
     }
@@ -199,7 +226,8 @@ function Get-NvmVersionsWithCache {
     if ($versions) {
         try {
             $versions | ConvertTo-Json | Out-File $cacheFile -Encoding UTF8 -Force
-        } catch {
+        }
+        catch {
             # Ignorar errores de cache
         }
     }
@@ -214,7 +242,8 @@ function Get-VersionsWithRetry {
     for ($i = 0; $i -lt $MaxRetries; $i++) {
         try {
             return Invoke-WebRequest -Uri "$NODE_MIRROR/index.json" -ErrorAction Stop | ConvertFrom-Json
-        } catch {
+        }
+        catch {
             if ($i -eq $MaxRetries - 1) { throw }
             Start-Sleep -Seconds ([Math]::Pow(2, $i))  # Backoff exponencial
         }
@@ -239,7 +268,8 @@ function Test-NvmrcVersion {
             $normalized = $Version -replace '^v', ''
             $exists = $versions | Where-Object { $_.version -eq "v$normalized" }
             return $exists -ne $null
-        } catch {
+        }
+        catch {
             return $true  # Si no podemos verificar, asumir válido
         }
     }
@@ -281,7 +311,8 @@ function Get-NvmrcVersion {
         }
 
         return $version
-    } catch {
+    }
+    catch {
         Write-NvmError "Error al leer $($fileInfo.Path): $($_.Exception.Message)"
         return $null
     }
@@ -302,7 +333,8 @@ function Get-NvmSuggestions {
         $versions = Get-NvmVersionsWithCache
         $ltsNames = $versions | Where-Object { $_.lts } | Select-Object -ExpandProperty lts -Unique
         $suggestions += $ltsNames
-    } catch {
+    }
+    catch {
         # Ignorar errores de red
     }
 
@@ -311,10 +343,10 @@ function Get-NvmSuggestions {
 
 # Función para desinstalar Node.js
 function Uninstall-Node {
-    param([string]$Version)
+    param([string]$Version, [switch]$Force)
 
     if ([string]::IsNullOrWhiteSpace($Version)) {
-        Write-NvmError "Versión es requerida. Uso: nvm uninstall <versión>"
+        Write-NvmError "Versión es requerida. Uso: nvm uninstall <versión> [--force]"
         return
     }
 
@@ -336,16 +368,22 @@ function Uninstall-Node {
 
     # Verificar si es la versión actualmente activa
     $currentVersion = Get-NvmCurrentVersion
-    if ($currentVersion -eq $Version) {
+    if ($currentVersion -eq $Version -and -not $Force) {
         Write-NvmError "No puedes desinstalar la versión actualmente activa. Cambia a otra versión primero con: nvm use <otra-versión>"
+        Write-Output "O usa --force para forzar la desinstalación: nvm uninstall $Version --force"
         return
     }
 
-    # Confirmar eliminación
-    $confirm = Read-Host "¿Estás seguro de que quieres desinstalar Node.js $Version? (y/N)"
-    if ($confirm -ne 'y' -and $confirm -ne 'Y') {
-        Write-Output "Cancelado."
-        return
+    # Confirmar eliminación (solo si no es forzado)
+    if (-not $Force) {
+        $confirm = Read-Host "¿Estás seguro de que quieres desinstalar Node.js $Version? (y/N)"
+        if ($confirm -ne 'y' -and $confirm -ne 'Y') {
+            Write-Output "Cancelado."
+            return
+        }
+    }
+    else {
+        Write-Output "Forzando desinstalación de la versión activa $Version..."
     }
 
     try {
@@ -365,7 +403,8 @@ function Use-Node {
         if ($nvmrcVersion) {
             Write-Output "Encontrado .nvmrc con versión: $nvmrcVersion"
             $Version = $nvmrcVersion
-        } else {
+        }
+        else {
             Write-NvmError "Versión es requerida. Uso: nvm use <versión>"
             return
         }
@@ -431,23 +470,25 @@ function Get-RemoteVersion {
     Write-Output "Obteniendo lista de versiones disponibles..."
     try {
         $versions = Get-NvmVersionsWithCache
-    } catch {
+    }
+    catch {
         Write-NvmError "Error al obtener versiones remotas"
         return
     }
         
-        # Procesar versiones para agregar etiquetas (inspirado en nvm.fish)
-        $processedVersions = @()
+    # Procesar versiones para agregar etiquetas (inspirado en nvm.fish)
+    $processedVersions = @()
         
-        foreach ($ver in $versions) {
-            $label = ""
-            if ($ver.version -eq $versions[0].version) {
-                $label = " latest"
-            } elseif ($ver.lts) {
-                $label = " lts/$($ver.lts.ToLower())"
-            }
-            $processedVersions += "$($ver.version)$label"
-        }    $processedVersions | ForEach-Object { Write-Output $_ }
+    foreach ($ver in $versions) {
+        $label = ""
+        if ($ver.version -eq $versions[0].version) {
+            $label = " latest"
+        }
+        elseif ($ver.lts) {
+            $label = " lts/$($ver.lts.ToLower())"
+        }
+        $processedVersions += "$($ver.version)$label"
+    }    $processedVersions | ForEach-Object { Write-Output $_ }
 }
 
 # Función para mostrar la versión actual
@@ -461,7 +502,8 @@ function Get-CurrentVersion {
                 Write-Output "Versión actual: $version"
                 return
             }
-        } catch {
+        }
+        catch {
             # Ignorar errores y continuar
         }
     }
@@ -473,7 +515,8 @@ function Get-CurrentVersion {
             Write-Output "Versión actual: $version"
             return
         }
-    } catch {
+    }
+    catch {
         # Ignorar errores
     }
 
@@ -481,7 +524,8 @@ function Get-CurrentVersion {
     $nvmPaths = $env:PATH -split ';' | Where-Object { $_ -like "*nvm*" -and $_ -like "*v*" }
     if ($nvmPaths) {
         Write-Output "Node.js no está en PATH. Usa 'nvm use <versión>' para activar una versión."
-    } else {
+    }
+    else {
         Write-Output "Node.js no está en PATH. No hay versiones de nvm activas."
     }
 }
@@ -706,29 +750,36 @@ function Write-NvmColoredText {
             if ($psColor) {
                 if ($NoNewline) {
                     Write-Host $Text -ForegroundColor $psColor -NoNewline
-                } else {
+                }
+                else {
                     Write-Host $Text -ForegroundColor $psColor
                 }
-            } else {
+            }
+            else {
                 # Fallback to ANSI codes if PowerShell color conversion fails
                 $coloredText = "$([char]27)[$colorCode$Text$([char]27)[0m"
                 if ($NoNewline) {
                     Write-Host $coloredText -NoNewline
-                } else {
+                }
+                else {
                     Write-Host $coloredText
                 }
             }
-        } else {
+        }
+        else {
             if ($NoNewline) {
                 Write-Host $Text -NoNewline
-            } else {
+            }
+            else {
                 Write-Host $Text
             }
         }
-    } else {
+    }
+    else {
         if ($NoNewline) {
             Write-Host $Text -NoNewline
-        } else {
+        }
+        else {
             Write-Host $Text
         }
     }
@@ -793,7 +844,8 @@ function Set-NvmColors {
             Write-NvmColoredText -Text $color -Color $color -NoNewline
         }
         Write-Host ""
-    } else {
+    }
+    else {
         Write-Host "Setting colors to: $ColorString"
         Write-Host "WARNING: Colors may not display because they are not supported in this shell."
     }
@@ -814,7 +866,8 @@ function Show-NvmVersions {
 
     try {
         $versions = Get-NvmVersionsWithCache
-    } catch {
+    }
+    catch {
         Write-NvmError "No se pudo obtener información de versiones"
         return
     }
@@ -824,8 +877,8 @@ function Show-NvmVersions {
 
     # Get installed versions
     $installedVersions = Get-ChildItem -Path $NVM_DIR -Directory |
-        Where-Object { $_.Name -match "^v\d" } |
-        Select-Object -ExpandProperty Name
+    Where-Object { $_.Name -match "^v\d" } |
+    Select-Object -ExpandProperty Name
 
     # Get latest version
     $latestVersion = $versions[0].version
@@ -926,7 +979,8 @@ function Show-NvmVersions {
         # Color indicator
         if ($currentVersion -eq $normalizedSystemVersion) {
             Write-NvmColoredText "▶" "G" -NoNewline
-        } else {
+        }
+        else {
             Write-Host " " -NoNewline
         }
         Write-NvmColoredText " $label$padding" "y" -NoNewline  # Amarillo para sistema
@@ -934,7 +988,8 @@ function Show-NvmVersions {
         Write-Host "$finalSpaces" -NoNewline
         if ($isInstalled) {
             Write-NvmColoredText "✓" "G"
-        } else {
+        }
+        else {
             Write-Host ""
         }
     }
@@ -957,7 +1012,8 @@ function Show-NvmVersions {
         Write-Host "$finalSpaces" -NoNewline
         if ($isInstalled) {
             Write-NvmColoredText "✓" "G"
-        } else {
+        }
+        else {
             Write-Host ""
         }
     }
@@ -978,7 +1034,8 @@ function Show-NvmVersions {
         Write-Host "$finalSpaces" -NoNewline
         if ($isInstalled) {
             Write-NvmColoredText "✓" "G"
-        } else {
+        }
+        else {
             Write-Host ""
         }
     }
@@ -997,7 +1054,8 @@ function Show-NvmVersions {
         # Color indicator
         if ($currentVersion -eq $latestVersion) {
             Write-NvmColoredText "▶" "G" -NoNewline
-        } else {
+        }
+        else {
             Write-Host " " -NoNewline
         }
         Write-NvmColoredText " $label$padding" "e" -NoNewline
@@ -1005,7 +1063,8 @@ function Show-NvmVersions {
         Write-Host "$finalSpaces" -NoNewline
         if ($isInstalled) {
             Write-NvmColoredText "✓" "G"
-        } else {
+        }
+        else {
             Write-Host ""
         }
     }
@@ -1026,7 +1085,8 @@ function Show-NvmVersions {
         # Color indicator
         if ($currentVersion -eq $normalizedLtsVersion) {
             Write-NvmColoredText "▶" "G" -NoNewline
-        } else {
+        }
+        else {
             Write-Host " " -NoNewline
         }
         Write-NvmColoredText " $label$padding" "M" -NoNewline  # Bold magenta for LTS labels
@@ -1034,7 +1094,8 @@ function Show-NvmVersions {
         Write-Host "$finalSpaces" -NoNewline
         if ($isInstalled) {
             Write-NvmColoredText "✓" "G"
-        } else {
+        }
+        else {
             Write-Host ""
         }
 
@@ -1053,7 +1114,8 @@ function Show-NvmVersions {
             # Color for installed LTS versions
             if ($isCurrentInstalled) {
                 Write-NvmColoredText $prefix "G" -NoNewline
-            } else {
+            }
+            else {
                 Write-NvmColoredText $prefix "e" -NoNewline
             }
             Write-NvmColoredText $formattedInstalled "M" -NoNewline
@@ -1071,11 +1133,13 @@ function Show-NvmVersions {
             # If .nvmrc version is current, show as ▶ .nvmrc: with ✓
             $indicator = "▶"
             $showCheckmark = $true
-        } elseif ($isInstalled) {
+        }
+        elseif ($isInstalled) {
             # If installed but not current, show as • .nvmrc: with ✓
             $indicator = "•"
             $showCheckmark = $true
-        } else {
+        }
+        else {
             # If not installed, show as • .nvmrc: without ✓
             $indicator = "•"
             $showCheckmark = $false
@@ -1090,7 +1154,8 @@ function Show-NvmVersions {
         # Color indicator
         if ($isCurrent) {
             Write-NvmColoredText "▶" "G" -NoNewline
-        } else {
+        }
+        else {
             Write-NvmColoredText "ϟ" "C" -NoNewline
         }
         Write-NvmColoredText " $label$padding" "e" -NoNewline
@@ -1098,7 +1163,8 @@ function Show-NvmVersions {
         Write-Host "$finalSpaces" -NoNewline
         if ($showCheckmark) {
             Write-NvmColoredText "✓" "G"
-        } else {
+        }
+        else {
             Write-Host ""
         }
     }
@@ -1110,7 +1176,7 @@ function Show-NvmVersions {
         $major = [version]($ver -replace '^v', '') | Select-Object -ExpandProperty Major
         @{
             Version = $ver
-            Major = $major
+            Major   = $major
         }
     } | Group-Object Major | ForEach-Object { $_.Group | Sort-Object { [version]($_.Version -replace '^v', '') } -Descending | Select-Object -First 1 } | Sort-Object { [version]($_.Version -replace '^v', '') } -Descending | Select-Object -First 3
 
@@ -1121,9 +1187,11 @@ function Show-NvmVersions {
             $normalizedVersion = Normalize-Version $versionInfo.Version
             $indicator = if ($currentVersion -eq $normalizedVersion) { 
                 "▶" 
-            } elseif ($nvmrcVersion -and $normalizedVersion -eq (Normalize-Version $nvmrcVersion)) {
+            }
+            elseif ($nvmrcVersion -and $normalizedVersion -eq (Normalize-Version $nvmrcVersion)) {
                 "•"
-            } else { 
+            }
+            else { 
                 " " 
             }
             $label = "v$($versionInfo.Major).x`:" 
@@ -1136,9 +1204,11 @@ function Show-NvmVersions {
             # Color indicator
             if ($currentVersion -eq $normalizedVersion) {
                 Write-NvmColoredText "▶" "G" -NoNewline
-            } elseif ($nvmrcVersion -and $normalizedVersion -eq (Normalize-Version $nvmrcVersion)) {
+            }
+            elseif ($nvmrcVersion -and $normalizedVersion -eq (Normalize-Version $nvmrcVersion)) {
                 Write-NvmColoredText "ϟ" "C" -NoNewline
-            } else {
+            }
+            else {
                 Write-Host " " -NoNewline
             }
             Write-NvmColoredText " $label$padding" "e" -NoNewline
@@ -1161,7 +1231,8 @@ function Get-NvmCurrentVersion {
             if ($version) {
                 return $version
             }
-        } catch {
+        }
+        catch {
             # Ignore errors
         }
     }
@@ -1182,7 +1253,8 @@ function Set-NvmActiveVersion {
     $activeFile = "$NVM_DIR\.active_version"
     try {
         $Version | Out-File -FilePath $activeFile -Encoding UTF8 -Force
-    } catch {
+    }
+    catch {
         Write-NvmError "Error al guardar versión activa: $($_.Exception.Message)"
     }
 }
@@ -1194,7 +1266,8 @@ function Get-NvmActiveVersion {
         try {
             $version = Get-Content $activeFile -Raw -Encoding UTF8 | ForEach-Object { $_.Trim() }
             return $version
-        } catch {
+        }
+        catch {
             # Ignore errors
         }
     }
@@ -1234,7 +1307,8 @@ function Get-NvmSystemVersion {
                 if ($version) {
                     return $version
                 }
-            } catch {
+            }
+            catch {
                 # Ignore errors
             }
         }
@@ -1270,8 +1344,8 @@ function Cleanup-Nvm {
     
     # Obtener versiones instaladas
     $installedVersions = Get-ChildItem -Path $NVM_DIR -Directory |
-        Where-Object { $_.Name -match "^v\d" } |
-        Select-Object -ExpandProperty Name
+    Where-Object { $_.Name -match "^v\d" } |
+    Select-Object -ExpandProperty Name
     
     if ($installedVersions.Count -eq 0) {
         Write-Output "No hay versiones instaladas para limpiar."
@@ -1288,7 +1362,8 @@ function Cleanup-Nvm {
     try {
         $versions = Get-NvmVersionsWithCache
         $ltsVersion = $versions | Where-Object { $_.lts } | Select-Object -First 1 | Select-Object -ExpandProperty version
-    } catch {
+    }
+    catch {
         $ltsVersion = $null
     }
     
@@ -1319,7 +1394,8 @@ function Cleanup-Nvm {
         try {
             Remove-Item $path -Recurse -Force
             Write-Output "Eliminada: $version"
-        } catch {
+        }
+        catch {
             Write-NvmError "Error al eliminar ${version}: $($_.Exception.Message)"
         }
     }
@@ -1381,7 +1457,8 @@ function Update-Nvm {
         Move-Item $tempPath "$NVM_DIR\nvm.ps1" -Force
         
         Write-Output "✅ nvm-windows actualizado. Reinicia la terminal para usar la nueva versión."
-    } catch {
+    }
+    catch {
         Write-NvmError "Error al actualizar: $($_.Exception.Message)"
         if (Test-Path $tempPath) { Remove-Item $tempPath -Force }
     }
@@ -1417,7 +1494,8 @@ function Test-NvmInstallation {
     if ($issues.Count -eq 0) {
         Write-Output "✅ Instalación correcta"
         return $true
-    } else {
+    }
+    else {
         Write-Output "❌ Problemas encontrados:"
         foreach ($issue in $issues) {
             Write-Output "  - $issue"
@@ -1429,7 +1507,15 @@ function Test-NvmInstallation {
 # Lógica principal
 switch ($Command) {
     "install" { if ($Version) { Install-Node $Version } else { Write-Output "Especifica una versión" } }
-    "uninstall" { if ($Version) { Uninstall-Node $Version } else { Write-Output "Especifica una versión" } }
+    "uninstall" { 
+        if ($Version) { 
+            $force = $RemainingArgs -contains "--force"
+            Uninstall-Node $Version -Force:$force 
+        }
+        else { 
+            Write-Output "Especifica una versión" 
+        } 
+    }
     "use" { if ($Version) { Use-Node $Version } else { Write-Output "Especifica una versión" } }
     "ls" { 
         $compact = $RemainingArgs -contains "--compact"
