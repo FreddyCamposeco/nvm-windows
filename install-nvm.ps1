@@ -1,37 +1,21 @@
-# install-nvm.ps1 - Instalador independiente para nvm-windows
-# Descarga y configura nvm para Windows desde GitHub
-# Uso: Invoke-WebRequest -Uri "https://raw.githubusercontent.com/FreddyCamposeco/nvm-windows/master/install-nvm.ps1" -OutFile "install-nvm.ps1"; .\install-nvm.ps1
-
-param(
-    [switch]$Uninstall
-)
-
-# Configuración
+param([switch]$Uninstall)
 $REPO_URL = "https://raw.githubusercontent.com/FreddyCamposeco/nvm-windows/master"
 $NVM_DIR = "$env:USERPROFILE\.nvm"
 $SCRIPT_URL = "$REPO_URL/nvm.ps1"
 $CMD_URL = "$REPO_URL/nvm.cmd"
-
 Write-Host "=== Instalador de nvm para Windows ===" -ForegroundColor Cyan
 Write-Host "Repositorio: https://github.com/FreddyCamposeco/nvm-windows" -ForegroundColor Gray
 Write-Host ""
-
-# Función mejorada para desinstalación
 function Uninstall-NVM {
     Write-Host "=== Desinstalando nvm-windows ===" -ForegroundColor Yellow
     Write-Host "Repositorio: https://github.com/FreddyCamposeco/nvm-windows" -ForegroundColor Gray
     Write-Host ""
-
-    # Confirmar desinstalación
     $confirm = Read-Host "¿Estás seguro de que quieres desinstalar nvm-windows? (s/n)"
     if ($confirm -ne "s" -and $confirm -ne "S") {
         Write-Host "Desinstalación cancelada." -ForegroundColor Red
         exit 0
     }
-
     Write-Host "Desinstalando nvm para Windows..." -ForegroundColor Yellow
-
-    # Verificar si está instalado
     $isInstalled = Test-Path "$NVM_DIR\nvm.ps1"
     if (-not $isInstalled) {
         Write-Host "⚠ nvm-windows no parece estar instalado en $NVM_DIR" -ForegroundColor Yellow
@@ -41,8 +25,6 @@ function Uninstall-NVM {
             exit 0
         }
     }
-
-    # Remover del PATH
     $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
     if ($currentPath -like "*$NVM_DIR*") {
         $newPath = ($currentPath -split ";" | Where-Object { $_ -ne $NVM_DIR -and $_ -notlike "*nvm*" }) -join ";"
@@ -51,22 +33,13 @@ function Uninstall-NVM {
     } else {
         Write-Host "ℹ nvm no estaba en PATH" -ForegroundColor Gray
     }
-
-    # Remover del PATH del sistema (por si acaso)
     $systemPath = [Environment]::GetEnvironmentVariable("Path", "Machine")
     if ($systemPath -like "*$NVM_DIR*") {
         $newSystemPath = ($systemPath -split ";" | Where-Object { $_ -ne $NVM_DIR -and $_ -notlike "*nvm*" }) -join ";"
         [Environment]::SetEnvironmentVariable("Path", $newSystemPath, "Machine")
         Write-Host "✓ Removido del PATH del sistema" -ForegroundColor Green
     }
-
-    # Remover archivos principales
-    $filesToRemove = @(
-        "$NVM_DIR\nvm.ps1",
-        "$NVM_DIR\nvm.cmd",
-        "$NVM_DIR\nvm-wrapper.cmd"
-    )
-
+    $filesToRemove = @("$NVM_DIR\nvm.ps1", "$NVM_DIR\nvm.cmd", "$NVM_DIR\nvm-wrapper.cmd")
     foreach ($file in $filesToRemove) {
         if (Test-Path $file) {
             try {
@@ -77,8 +50,6 @@ function Uninstall-NVM {
             }
         }
     }
-
-    # Remover alias del perfil de PowerShell
     $profilePath = $PROFILE
     if (Test-Path $profilePath) {
         try {
@@ -95,13 +66,10 @@ function Uninstall-NVM {
             Write-Host "⚠ Error procesando perfil de PowerShell: $($_.Exception.Message)" -ForegroundColor Yellow
         }
     }
-
-    # Verificar si hay versiones instaladas
     $versionsDir = "$NVM_DIR"
     if (Test-Path $versionsDir) {
         $versionFolders = Get-ChildItem $versionsDir -Directory | Where-Object { $_.Name -match "^v\d" }
         $aliasFiles = Get-ChildItem $versionsDir -File | Where-Object { $_.Name -notmatch "\.(ps1|cmd)$" }
-
         if ($versionFolders.Count -gt 0 -or $aliasFiles.Count -gt 0) {
             Write-Host ""
             Write-Host "⚠ Se encontraron versiones instaladas y/o archivos:" -ForegroundColor Yellow
@@ -113,7 +81,6 @@ function Uninstall-NVM {
                 Write-Host "  Archivos: $($aliasFiles.Count)" -ForegroundColor White
                 $aliasFiles | ForEach-Object { Write-Host "    - $($_.Name)" -ForegroundColor Gray }
             }
-
             $removeVersions = Read-Host "¿Quieres eliminar también las versiones instaladas? (s/n)"
             if ($removeVersions -eq "s" -or $removeVersions -eq "S") {
                 try {
@@ -126,7 +93,6 @@ function Uninstall-NVM {
                 Write-Host "ℹ Versiones conservadas en $NVM_DIR" -ForegroundColor Gray
             }
         } else {
-            # Si no hay versiones, eliminar el directorio completo
             try {
                 Remove-Item $NVM_DIR -Force
                 Write-Host "✓ Directorio $NVM_DIR eliminado" -ForegroundColor Green
@@ -135,7 +101,6 @@ function Uninstall-NVM {
             }
         }
     }
-
     Write-Host ""
     Write-Host "=== Desinstalación Completada ===" -ForegroundColor Cyan
     Write-Host "✓ nvm-windows ha sido desinstalado" -ForegroundColor Green
@@ -143,13 +108,10 @@ function Uninstall-NVM {
     Write-Host "Nota: Reinicia PowerShell para que los cambios surtan efecto completo." -ForegroundColor Yellow
     Write-Host "Repositorio: https://github.com/FreddyCamposeco/nvm-windows" -ForegroundColor Gray
 }
-
 if ($Uninstall) {
     Uninstall-NVM
     exit 0
 }
-
-# Verificar si ya está instalado
 if (Test-Path "$NVM_DIR\nvm.ps1") {
     Write-Host "nvm ya está instalado en $NVM_DIR" -ForegroundColor Yellow
     $overwrite = Read-Host "¿Deseas reinstalar? (s/n)"
@@ -158,16 +120,11 @@ if (Test-Path "$NVM_DIR\nvm.ps1") {
         exit 1
     }
 }
-
 Write-Host "Instalando nvm para Windows..." -ForegroundColor Green
-
-# Crear directorio
 if (!(Test-Path $NVM_DIR)) {
     New-Item -ItemType Directory -Path $NVM_DIR | Out-Null
     Write-Host "✓ Directorio $NVM_DIR creado" -ForegroundColor Green
 }
-
-# Descargar script principal
 Write-Host "Descargando script principal..." -ForegroundColor Gray
 try {
     Invoke-WebRequest -Uri $SCRIPT_URL -OutFile "$NVM_DIR\nvm.ps1" -ErrorAction Stop
@@ -176,8 +133,6 @@ try {
     Write-Host "✗ Error descargando script principal: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
 }
-
-# Descargar wrapper CMD
 Write-Host "Descargando wrapper CMD..." -ForegroundColor Gray
 try {
     Invoke-WebRequest -Uri $CMD_URL -OutFile "$NVM_DIR\nvm.cmd" -ErrorAction Stop
@@ -186,8 +141,6 @@ try {
     Write-Host "✗ Error descargando wrapper CMD: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
 }
-
-# Agregar a PATH
 $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
 if ($currentPath -notlike "*$NVM_DIR*") {
     $newPath = "$currentPath;$NVM_DIR"
@@ -196,19 +149,14 @@ if ($currentPath -notlike "*$NVM_DIR*") {
 } else {
     Write-Host "✓ Ya está en PATH" -ForegroundColor Green
 }
-
-# Configurar alias en perfil
 $profilePath = $PROFILE
 $aliasContent = @"
-
 # Alias for nvm-windows
 Set-Alias nvm "$env:USERPROFILE\.nvm\nvm.ps1"
 "@
-
 if (!(Test-Path $profilePath)) {
     New-Item -ItemType File -Path $profilePath -Force | Out-Null
 }
-
 $profileContent = Get-Content $profilePath -Raw -ErrorAction SilentlyContinue
 if ($profileContent -notlike "*nvm-windows*") {
     Add-Content -Path $profilePath -Value $aliasContent
@@ -216,33 +164,25 @@ if ($profileContent -notlike "*nvm-windows*") {
 } else {
     Write-Host "✓ Alias ya configurado en perfil" -ForegroundColor Green
 }
-
 Write-Host ""
 Write-Host "=== Instalación Completada ===" -ForegroundColor Cyan
 Write-Host "✓ nvm instalado en: $NVM_DIR" -ForegroundColor Green
 Write-Host "✓ Agregado al PATH" -ForegroundColor Green
 Write-Host "✓ Alias configurado" -ForegroundColor Green
 Write-Host ""
-
-# Preguntar si quiere instalar versión LTS automáticamente
 $installLts = Read-Host "¿Quieres instalar automáticamente la versión LTS de Node.js? (s/n)"
 if ($installLts -eq "s" -or $installLts -eq "S") {
     Write-Host "Instalando versión LTS de Node.js..." -ForegroundColor Yellow
     try {
-        # Ejecutar nvm install lts usando el path completo
         $installResult = & "$NVM_DIR\nvm.ps1" install lts 2>&1
         if ($LASTEXITCODE -eq 0) {
             Write-Host "✓ Versión LTS instalada correctamente" -ForegroundColor Green
-
-            # Configurar como versión por defecto
             $setDefaultResult = & "$NVM_DIR\nvm.ps1" set-default lts 2>&1
             if ($LASTEXITCODE -eq 0) {
                 Write-Host "✓ Versión LTS configurada como por defecto" -ForegroundColor Green
             } else {
                 Write-Host "⚠ No se pudo configurar versión por defecto: $setDefaultResult" -ForegroundColor Yellow
             }
-
-            # Configurar PATH de la sesión actual para que node esté disponible inmediatamente
             $currentVersion = & "$NVM_DIR\nvm.ps1" current 2>$null
             if ($currentVersion -and $currentVersion -match "v\d+\.\d+\.\d+") {
                 $nodePath = "$NVM_DIR\$currentVersion"
@@ -262,7 +202,6 @@ if ($installLts -eq "s" -or $installLts -eq "S") {
 } else {
     Write-Host "ℹ Instalación de LTS omitida. Puedes instalarla manualmente con: nvm install lts" -ForegroundColor Gray
 }
-
 Write-Host ""
 Write-Host "Para usar nvm:" -ForegroundColor Yellow
 Write-Host "1. Reinicia PowerShell o ejecuta: & `$PROFILE" -ForegroundColor White
