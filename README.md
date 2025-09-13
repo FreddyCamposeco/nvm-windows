@@ -141,7 +141,7 @@ nvm-windows v2.3 incluye un formato de salida compacto e informativo inspirado e
   lts/hydrogen: v18.20.8     ✓
   lts/iron:     v20.9.0      ✓
 ▶ lts/jod:      v22.19.0     ✓
-ϟ▶ .nvmrc:      v20.19.5     ✓
+ϟ .nvmrc:       v20.19.5     ✓
 
 Available (non-LTS):
   v24.x:        v24.8.0      ✓
