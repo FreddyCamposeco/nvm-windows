@@ -303,7 +303,7 @@ El comando `doctor` verifica:
 
 ### Problemas Comunes
 
-**"nvm: The term 'nvm' is not recognized"**
+### "nvm: The term 'nvm' is not recognized"
 
 ```powershell
 # Verifica que esté en PATH
@@ -313,7 +313,7 @@ nvm doctor
 .\install.ps1
 ```
 
-**"Versión no instalada"**
+### "Versión no instalada"
 
 ```powershell
 # Lista versiones disponibles
@@ -323,7 +323,7 @@ nvm ls-remote | Select-Object -First 10
 nvm install 18.19.0
 ```
 
-**Alias no funciona**
+### Alias no funciona
 
 ```powershell
 # Verifica que el alias existe
