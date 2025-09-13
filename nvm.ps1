@@ -361,14 +361,14 @@ function Set-NvmColors {
     }
 }
 
-# Función para mostrar versiones con colores (equivalente a nvm list)
+# Función para mostrar versiones con colores (equivalente a nvm list) - Inspirado en nvm.fish
 function Show-NvmVersions {
     <#
     .SYNOPSIS
-        Shows installed Node.js versions with color coding
+        Shows installed Node.js versions with color coding (inspired by nvm.fish)
     .DESCRIPTION
-        Displays a formatted list of installed Node.js versions with color indicators
-        for current version, installed versions, etc.
+        Displays a formatted list of installed Node.js versions with clean formatting
+        similar to nvm.fish, using proper alignment and indicators
     #>
     param(
         [string]$Pattern = ""
@@ -388,65 +388,85 @@ function Show-NvmVersions {
         Select-Object -ExpandProperty Name |
         Sort-Object
 
-    if ($installedVersions.Count -eq 0) {
+    # Check if system Node.js is available
+    $hasSystemNode = Test-NvmSystemNode
+    if ($hasSystemNode) {
+        $systemVersion = Get-NvmSystemVersion
+    }
+
+    # Build version list with aliases/metadata
+    $versionData = @()
+
+    foreach ($version in $installedVersions) {
+        $versionData += @{
+            Version = $version
+            Alias = ""  # Could be extended to support aliases
+            Type = "installed"
+        }
+    }
+
+    if ($hasSystemNode -and $systemVersion) {
+        $versionData += @{
+            Version = "system"
+            Alias = ""
+            Type = "system"
+        }
+    }
+
+    if ($versionData.Count -eq 0) {
         Write-NvmError "No versions installed."
         return
     }
 
-    # Check if system Node.js is available
-    $hasSystemNode = Test-NvmSystemNode
+    # Calculate maximum width for alignment
+    $maxWidth = ($versionData | ForEach-Object { $_.Version.Length } | Measure-Object -Maximum).Maximum
+
+    # Display header if no current version
+    if (!$currentVersion -or $currentVersion -eq "") {
+        if (Test-NvmTerminalColors) {
+            Write-NvmColoredText -Text "No version currently active" -Color "y"  # Yellow for warning
+        } else {
+            Write-Host "No version currently active" -ForegroundColor Yellow
+        }
+        Write-Host ""
+    }
 
     Write-Host ""
-    Write-Host "Installed versions:"
 
-    foreach ($version in $installedVersions) {
-        $displayText = $version.PadRight(15)
+    foreach ($versionInfo in $versionData) {
+        $version = $versionInfo.Version
+        $isCurrent = ($version -eq $currentVersion)
 
-        if ($version -eq $currentVersion) {
-            # Current version - show with arrow
-            if (Test-NvmTerminalColors) {
-                $colorCode = Get-NvmColors -Index 3  # Current color
-                Write-Host "-> $displayText" -ForegroundColor Green -NoNewline
-                Write-Host " *" -ForegroundColor Yellow
+        # Choose indicator and color based on version type and status
+        if ($isCurrent) {
+            $indicator = " ▶ "
+            $color = "g"  # Current version in green
+        } elseif ($versionInfo.Type -eq "system") {
+            $indicator = "   "
+            $color = "c"  # System version in cyan
+        } else {
+            $indicator = "   "
+            $color = "b"  # Installed versions in blue
+        }
+
+        # Format version with proper padding
+        $formattedVersion = $version.PadRight($maxWidth)
+
+        # Display with color if supported
+        if (Test-NvmTerminalColors) {
+            Write-Host $indicator -NoNewline
+            Write-NvmColoredText -Text $formattedVersion -Color $color -NoNewline
+            if ($versionInfo.Alias) {
+                Write-Host " $($versionInfo.Alias)" -ForegroundColor Yellow
             } else {
-                Write-Host "-> $displayText *"
+                Write-Host ""
             }
         } else {
-            # Installed version
-            if (Test-NvmTerminalColors) {
-                Write-Host "   $displayText" -ForegroundColor Green -NoNewline
-                Write-Host " *" -ForegroundColor Yellow
-            } else {
-                Write-Host "   $displayText *"
-            }
+            $aliasText = if ($versionInfo.Alias) { " $($versionInfo.Alias)" } else { "" }
+            Write-Host "$indicator$formattedVersion$aliasText"
         }
     }
 
-    # Show system version if available
-    if ($hasSystemNode) {
-        $systemVersion = Get-NvmSystemVersion
-        if ($systemVersion) {
-            $displayText = "system".PadRight(15)
-            if ($currentVersion -eq "system") {
-                if (Test-NvmTerminalColors) {
-                    Write-Host "-> $displayText" -ForegroundColor Cyan -NoNewline
-                    Write-Host " *" -ForegroundColor Yellow
-                } else {
-                    Write-Host "-> $displayText *"
-                }
-            } else {
-                if (Test-NvmTerminalColors) {
-                    Write-Host "   $displayText" -ForegroundColor Cyan -NoNewline
-                    Write-Host " *" -ForegroundColor Yellow
-                } else {
-                    Write-Host "   $displayText *"
-                }
-            }
-        }
-    }
-
-    Write-Host ""
-    Write-Host "Use 'nvm use <version>' to switch Node.js versions"
     Write-Host ""
 }
 
