@@ -19,6 +19,7 @@
 - 🛡️ **Manejo Robusto de Errores**: Validación completa y mensajes informativos
 - 📦 **Compatibilidad Total**: Funciona con npm, yarn, pnpm y más
 - 🔗 **Sistema de Enlaces Simbólicos**: Gestión de versiones sin manipulación de PATH
+- ⚡ **Cache Local Inteligente**: Acelera comandos y reduce tráfico de red
 
 [![Estado](https://img.shields.io/badge/Estado-Beta-orange.svg)](https://github.com/FreddyCamposeco/nvm-windows)
 [![Versión](https://img.shields.io/badge/Versi%C3%B3n-2.4--beta-blue.svg)](https://github.com/FreddyCamposeco/nvm-windows)
@@ -42,6 +43,7 @@ Una adaptación completa de [nvm](https://github.com/nvm-sh/nvm) para Windows na
 - 🛡️ **Vista Mejorada de LTS**: `nvm ls` muestra versiones LTS con estado y metadatos
 - 🛡️ **Manejo Robusto de Errores**: Validación completa y mensajes informativos
 - 📦 **Compatibilidad Total**: Funciona con npm, yarn, pnpm y más
+- ⚡ **Cache Local Inteligente**: Acelera comandos y reduce tráfico de red
 
 ## 🔗 Sistema de Enlaces Simbólicos (v2.4-beta)
 
@@ -71,6 +73,42 @@ nvm migrate
 # Cambiar versiones (ahora instantáneo)
 nvm use lts
 nvm use 20.19.5
+```
+
+## ⚡ Sistema de Cache Local
+
+nvm-windows incluye un **sistema de cache inteligente** para mejorar significativamente el rendimiento y reducir las llamadas a la red:
+
+### Características del Cache
+
+- 📦 **Cache de Versiones Remotas**: Almacena la lista de versiones disponibles por **15 minutos**
+- 🏠 **Cache de Versiones Instaladas**: Almacena versiones locales por **5 minutos**
+- 🚀 **Actualización Forzada**: Comando `lsu` para refrescar el cache manualmente
+- 💾 **Archivos de Cache**:
+  - `$NVM_DIR\.version_cache.json` - Versiones remotas
+  - `$NVM_DIR\.installed_versions_cache.json` - Versiones instaladas
+
+### Ventajas del Cache
+
+- ⚡ **Arranque instantáneo**: `nvm ls` carga desde cache local
+- 📶 **Menos tráfico de red**: Reduce llamadas a `nodejs.org/dist/index.json`
+- 🔄 **Actualización automática**: Cache se refresca automáticamente cuando expira
+- 🛠️ **Comando de refresco**: `nvm lsu` para forzar actualización inmediata
+
+### Uso del Cache
+
+```powershell
+# Ver versiones (usa cache si disponible)
+nvm ls
+
+# Forzar actualización del cache de versiones
+nvm lsu
+
+# Ver todas las versiones disponibles remotas
+nvm ls-remote
+
+# El cache se actualiza automáticamente cada 15 minutos
+# o cuando instalas nuevas versiones
 ```
 
 ## 📦 Instalación
@@ -135,6 +173,8 @@ nvm install 20.19.5
 | `nvm install <versión>` | Instala una versión (soporta aliases)| `nvm install lts`     |
 | `nvm use <versión>`     | Cambia a una versión o usa .nvmrc    | `nvm use`             |
 | `nvm ls` / `nvm list`   | Lista versiones instaladas con LTS y estado | `nvm ls`              |
+| `nvm lsu`                | Fuerza actualización del cache de versiones | `nvm lsu`             |
+| `nvm ls-remote`          | Lista versiones disponibles para descargar | `nvm ls-remote`       |
 | `nvm current`           | Muestra versión actual               | `nvm current`         |
 | `nvm uninstall <versión> [--force]` | Desinstala una versión (usa --force para versión activa) | `nvm uninstall 20.19.5 --force` |
 
