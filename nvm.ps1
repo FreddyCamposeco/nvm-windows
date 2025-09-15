@@ -1169,51 +1169,22 @@ function Show-NvmVersions {
         Write-Host "$finalSpaces"
     }
 
-    # Show default version if different from global
-    if ($defaultVersion -and $defaultVersion -ne $globalVersion) {
-        $isInstalled = $installedVersions -contains $defaultVersion
-        $label = "default:"
-        $padding = " " * (14 - $label.Length)
-        $formattedVersion = Format-Version $defaultVersion
-        $lineContent = "→ $label$padding$formattedVersion"
-        $spacesNeeded = $totalWidth - $lineContent.Length - ($isInstalled ? 1 : 0)
-        $finalSpaces = " " * [Math]::Max(1, $spacesNeeded)
-
-        Write-NvmColoredText "→" "b" -NoNewline
-        Write-NvmColoredText " $label$padding" "e" -NoNewline
-        Write-NvmColoredText "$formattedVersion" "b" -NoNewline
-        Write-Host "$finalSpaces" -NoNewline
-        if ($isInstalled) {
-            Write-NvmColoredText "✓" "M"
-        }
-        else {
-            Write-Host ""
-        }
-    }
-
-    # Latest version
+    # Show latest version
     if ($latestVersion) {
         $isInstalled = $installedVersions -contains $latestVersion
         $label = "latest:"
         $padding = " " * (14 - $label.Length)
-        $indicator = if ($currentVersion -eq $latestVersion) { "▶" } else { " " }
         $formattedVersion = Format-Version $latestVersion
-        $lineContent = "$indicator $label$padding$formattedVersion"
+        $lineContent = "  $label$padding$formattedVersion"
         $spacesNeeded = $totalWidth - $lineContent.Length - ($isInstalled ? 1 : 0)
         $finalSpaces = " " * [Math]::Max(1, $spacesNeeded)
 
-        # Color indicator
-        if ($currentVersion -eq $latestVersion) {
-            Write-NvmColoredText "▶" "G" -NoNewline
-        }
-        else {
-            Write-Host " " -NoNewline
-        }
-        Write-NvmColoredText " $label$padding" "e" -NoNewline
-        Write-NvmColoredText "$formattedVersion" "e" -NoNewline
+        Write-Host "  " -NoNewline
+        Write-NvmColoredText "$label$padding" "e" -NoNewline
+        Write-NvmColoredText "$formattedVersion" "c" -NoNewline  # Cyan for latest
         Write-Host "$finalSpaces" -NoNewline
         if ($isInstalled) {
-            Write-NvmColoredText "✓" "M"
+            Write-NvmColoredText "✓" "G"
         }
         else {
             Write-Host ""
@@ -1224,54 +1195,23 @@ function Show-NvmVersions {
     foreach ($lts in $ltsVersions) {
         $normalizedLtsVersion = Normalize-Version $lts.version
         $isInstalled = $installedVersions -contains $normalizedLtsVersion
-        $indicator = if ($currentVersion -eq $normalizedLtsVersion) { "▶" } else { " " }
         $name = $lts.lts.ToLower()
         $label = "lts/$name`:" 
         $padding = " " * (14 - $label.Length)
         $formattedVersion = Format-Version $lts.version
-        $lineContent = "$indicator $label$padding$formattedVersion"
+        $lineContent = "  $label$padding$formattedVersion"
         $spacesNeeded = $totalWidth - $lineContent.Length - ($isInstalled ? 1 : 0)
         $finalSpaces = " " * [Math]::Max(1, $spacesNeeded)
 
-        # Color indicator
-        if ($currentVersion -eq $normalizedLtsVersion) {
-            Write-NvmColoredText "▶" "G" -NoNewline
-        }
-        else {
-            Write-Host " " -NoNewline
-        }
-        Write-NvmColoredText " $label$padding" "M" -NoNewline  # Bold magenta for LTS labels
-        Write-NvmColoredText "$formattedVersion" "M" -NoNewline  # Bold magenta for LTS versions
+        Write-Host "  " -NoNewline
+        Write-NvmColoredText "$label$padding" "y" -NoNewline  # Yellow for LTS labels
+        Write-NvmColoredText "$formattedVersion" "e" -NoNewline  # Gray for LTS versions
         Write-Host "$finalSpaces" -NoNewline
         if ($isInstalled) {
-            Write-NvmColoredText "✓" "M"
+            Write-NvmColoredText "✓" "G"
         }
         else {
             Write-Host ""
-        }
-
-        # Show installed versions in this LTS line that are not the latest
-        $installedInLine = $installedLtsMapping.Keys | Where-Object { $installedLtsMapping[$_] -eq $lts.lts -and $_ -ne $normalizedLtsVersion } | Sort-Object { [version]($_ -replace '^v', '') } -Descending
-        foreach ($installedVer in $installedInLine) {
-            $normalizedInstalled = Normalize-Version $installedVer
-            $isCurrentInstalled = $currentVersion -eq $normalizedInstalled
-            $indicatorInstalled = if ($isCurrentInstalled) { "▶" } else { " " }
-            $formattedInstalled = Format-Version $installedVer
-            $prefix = "     ↳          "
-            $lineContentInstalled = "$prefix$formattedInstalled"
-            $spacesNeededInstalled = $totalWidth - $lineContentInstalled.Length - 1  # Always show ✓
-            $finalSpacesInstalled = " " * [Math]::Max(1, $spacesNeededInstalled)
-
-            # Color for installed LTS versions
-            if ($isCurrentInstalled) {
-                Write-NvmColoredText $prefix "G" -NoNewline
-            }
-            else {
-                Write-NvmColoredText $prefix "e" -NoNewline
-            }
-            Write-NvmColoredText $formattedInstalled "M" -NoNewline
-            Write-Host "$finalSpacesInstalled" -NoNewline
-            Write-NvmColoredText "✓" "M"
         }
     }
 
@@ -1288,22 +1228,12 @@ function Show-NvmVersions {
             $isCurrent = $false
         }
 
-        if ($isCurrent) {
-            # If .nvmrc version is current, show as ▶ .nvmrc: with ✓
-            $indicator = "▶"
-        }
-        elseif ($isInstalled) {
-            # If installed but not current, show as ϟ .nvmrc: with ✓
-            $indicator = "ϟ"
-        }
-        else {
-            # If not installed, show as ϟ .nvmrc: with ✗
-            $indicator = "ϟ"
-        }
-
         $label = ".nvmrc:"
         $padding = " " * (14 - $label.Length)
         $formattedVersion = Format-Version $nvmrcVersion
+        $lineContent = "  $label$padding$formattedVersion"
+        $spacesNeeded = $totalWidth - $lineContent.Length - 1  # Always show indicator
+        $finalSpaces = " " * [Math]::Max(1, $spacesNeeded)
 
         # Color indicator
         if ($isCurrent) {
@@ -1312,8 +1242,8 @@ function Show-NvmVersions {
         else {
             Write-NvmColoredText "ϟ" "Y" -NoNewline
         }
-        Write-NvmColoredText " $label$padding" "m" -NoNewline
-        Write-NvmColoredText "$formattedVersion" "m" -NoNewline
+        Write-NvmColoredText " $label$padding" "m" -NoNewline  # Purple for .nvmrc label
+        Write-NvmColoredText "$formattedVersion" "m" -NoNewline  # Purple for .nvmrc version
         Write-Host "$finalSpaces" -NoNewline
         if ($isInstalled) {
             Write-NvmColoredText "✓" "G"  # Green checkmark if installed
