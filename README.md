@@ -271,6 +271,7 @@ El archivo `layout.html` es una **réplica exacta** del formato visual de `nvm l
 - 🔄 **Referencia de coherencia** entre HTML y PowerShell
 
 **Para usarlo:**
+
 ```bash
 # Abrir en navegador
 start layout.html
