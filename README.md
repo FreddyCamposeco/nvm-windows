@@ -20,6 +20,7 @@
 - 📦 **Compatibilidad Total**: Funciona con npm, yarn, pnpm y más
 - 🔗 **Sistema de Enlaces Simbólicos**: Gestión de versiones sin manipulación de PATH
 - ⚡ **Cache Local Inteligente**: Acelera comandos y reduce tráfico de red
+- 🎨 **Diseño Visual Coherente**: Archivo `layout.html` como referencia visual
 
 [![Estado](https://img.shields.io/badge/Estado-Beta-orange.svg)](https://github.com/FreddyCamposeco/nvm-windows)
 [![Versión](https://img.shields.io/badge/Versi%C3%B3n-2.4--beta-blue.svg)](https://github.com/FreddyCamposeco/nvm-windows)
@@ -44,6 +45,7 @@ Una adaptación completa de [nvm](https://github.com/nvm-sh/nvm) para Windows na
 - 🛡️ **Manejo Robusto de Errores**: Validación completa y mensajes informativos
 - 📦 **Compatibilidad Total**: Funciona con npm, yarn, pnpm y más
 - ⚡ **Cache Local Inteligente**: Acelera comandos y reduce tráfico de red
+- 🎨 **Diseño Visual Coherente**: Archivo `layout.html` como referencia visual
 
 ## 🔗 Sistema de Enlaces Simbólicos (v2.4-beta)
 
@@ -230,57 +232,59 @@ Available (non-LTS):
 
 **Características del formato:**
 
-- `→` indica la versión global (se muestra siempre) - **azul**
+- `→` indica la versión global (se muestra siempre) - **cyan**
 - `▶` indica la versión actualmente seleccionada - **verde**
-- `ϟ` indica que existe un archivo .nvmrc (sin forzar uso) - **amarillo fuerte**
-- `▶` indica que existe .nvmrc Y es la versión actual - **amarillo fuerte**
-- `✓` marca todas las versiones disponibles (compactamente alineado al final) - **magenta negrita**
-- **Versiones LTS** se muestran en **magenta negrita**
+- `ϟ` indica que existe un archivo .nvmrc (sin forzar uso) - **amarillo**
+- `✓` marca versiones instaladas - **verde**
+- `✗` marca versiones no instaladas - **rojo**
+- **Versiones LTS** se muestran en **amarillo** (etiquetas) y **gris** (versiones)
 - Alineación perfecta con ancho fijo compacto para consistencia
 - Versiones formateadas de manera natural (sin padding de ceros)
-- Sección separada para versiones no-LTS disponibles
-- Información completa en formato ultra-compacto
 
-## 🏷️ Sistema de Alias
+## 📁 Archivos del Proyecto
 
-Crea atajos para tus versiones favoritas:
+### Archivos Principales
 
-```powershell
-# Crear aliases útiles
-nvm alias lts 22.19.0
-nvm alias latest 24.8.0
-nvm alias dev 23.9.0
+| Archivo | Descripción |
+|---------|-------------|
+| `nvm.ps1` | Script principal de nvm-windows con todas las funcionalidades |
+| `install-nvm.ps1` | Instalador automático para configuración inicial |
+| `layout.html` | **Referencia visual** del formato de salida (abre en navegador) |
+| `README.md` | Esta documentación completa |
+| `nvm.cmd` | Wrapper para compatibilidad con CMD |
+| `nvm-wrapper.cmd` | Wrapper adicional para entornos específicos |
 
-# Listar todos los aliases
-nvm aliases
+### Sistema de Cache
 
-# Usar un alias
-nvm use lts
+| Archivo | Descripción | Ubicación |
+|---------|-------------|-----------|
+| `.version_cache.json` | Cache de versiones remotas (15 min) | `$NVM_DIR\` |
+| `.installed_versions_cache.json` | Cache de versiones instaladas (5 min) | `$NVM_DIR\` |
 
-# Eliminar un alias
-nvm unalias dev
+### Archivo `layout.html`
+
+El archivo `layout.html` es una **réplica exacta** del formato visual de `nvm ls` implementada en HTML/CSS. Sirve como:
+
+- 🎨 **Especificación visual** autorizada del diseño
+- 🧪 **Entorno de pruebas** para cambios de formato
+- 📚 **Documentación interactiva** de colores y layout
+- 🔄 **Referencia de coherencia** entre HTML y PowerShell
+
+**Para usarlo:**
+```bash
+# Abrir en navegador
+start layout.html
+
+# O desde VS Code con Live Server
+# Ctrl+Shift+P → "Open with Live Server"
 ```
 
-## 📄 Soporte para .nvmrc
+**Características técnicas:**
 
-nvm-windows detecta automáticamente archivos `.nvmrc` o `.node-version` para versiones por proyecto:
-
-```powershell
-# Crear un archivo .nvmrc en tu proyecto
-echo "lts" > .nvmrc
-
-# Usar la versión especificada
-nvm use  # Detecta automáticamente .nvmrc
-
-# Instalar la versión del .nvmrc
-nvm install  # Instala la versión del archivo
-```
-
-**Características:**
-
-- Búsqueda recursiva desde el directorio actual hacia arriba
-- Soporte para versiones específicas, aliases o nombres LTS
-- Compatible con flujos de trabajo de equipos
+- CSS Variables para colores consistentes
+- Diseño responsive con gradientes
+- Simulación perfecta de terminal
+- Actualización sincronizada con `nvm.ps1`
 
 ## 🎨 Personalización de Colores
 
@@ -323,6 +327,53 @@ $env:NVM_COLORS = "bygre"
 # Desactivar colores de nvm específicamente
 $env:NVM_NO_COLORS = 1
 ```
+
+## 🎨 Diseño Visual y Layout
+
+### Archivo de Referencia: `layout.html`
+
+El proyecto incluye un **archivo HTML de referencia** (`layout.html`) que replica exactamente la salida visual del comando `nvm ls`. Este archivo sirve como:
+
+- 📋 **Especificación visual** del formato de salida
+- 🎨 **Referencia de colores** y estilos
+- 🧪 **Pruebas de diseño** antes de implementar cambios
+- 📖 **Documentación interactiva** del formato
+
+### Características del Diseño
+
+```html
+<!-- Ejemplo del formato visual -->
+→ global:       v22.19.0
+  latest:       v24.8.0
+  lts/argon:    v4.9.1
+  lts/jod:      v22.19.0   ✓
+ϟ .nvmrc:       v18.19.0   ✗
+```
+
+### Esquema de Colores CSS
+
+| Elemento | Color CSS | Descripción |
+|----------|-----------|-------------|
+| `→ global:` | `--cyan` | Versión global actual |
+| `latest:` | `--cyan` | Última versión disponible |
+| `lts/*:` | `--yellow` | Etiquetas de versiones LTS |
+| Versiones instaladas | `--fg` | Texto normal |
+| Versiones no instaladas | `--muted` | Gris apagado |
+| `.nvmrc:` | `--purple` | Archivo de configuración |
+| `✓` | `--green` | Instalado correctamente |
+| `✗` | `--red` | No instalado |
+
+### Uso del Layout HTML
+
+```bash
+# Abrir en navegador para ver el diseño
+start layout.html
+
+# O desde VS Code
+# Ctrl+Shift+P → "Open with Live Server"
+```
+
+**Nota:** El archivo `layout.html` se mantiene sincronizado con la implementación de PowerShell para asegurar consistencia visual perfecta.
 
 ## 🏠 Versión por Defecto
 
