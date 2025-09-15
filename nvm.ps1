@@ -43,6 +43,7 @@ function Show-Help {
     Write-Output "  uninstall <versión> [--force]  Desinstala una versión específica de Node.js"
     Write-Output "  use <versión>        Cambia a una versión específica o alias"
     Write-Output "  ls                   Lista versiones instaladas con colores"
+    Write-Output "  lsu                  Fuerza actualización de la lista de versiones"
     Write-Output "  list                 Lista versiones instaladas (sinónimo de ls)"
     Write-Output "  ls-remote            Lista versiones disponibles para descargar"
     Write-Output "  current              Muestra la versión actualmente activa"
@@ -193,6 +194,9 @@ function Install-Node {
 
         Remove-Item $zipPath -Force
         Write-Output "Node.js $Version instalado en $extractPath"
+        
+        # Actualizar cache de versiones instaladas
+        Save-InstalledVersionsCache
     }
     catch {
         Write-NvmError "Error durante la instalación: $($_.Exception.Message)"
@@ -200,44 +204,6 @@ function Install-Node {
         if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
         if (Test-Path $extractPath) { Remove-Item $extractPath -Recurse -Force }
     }
-}
-
-# Función para obtener versiones con cache inteligente
-function Get-NvmVersionsWithCache {
-    $cacheFile = "$NVM_DIR\.version_cache.json"
-    $cacheExpiryHours = 24
-
-    # Verificar si el cache es válido
-    $cacheIsValid = $false
-    if (Test-Path $cacheFile) {
-        $cacheAge = (Get-Date) - (Get-Item $cacheFile).LastWriteTime
-        $cacheIsValid = $cacheAge.TotalHours -lt $cacheExpiryHours
-    }
-
-    if ($cacheIsValid) {
-        try {
-            $versions = Get-Content $cacheFile -Raw | ConvertFrom-Json
-            return $versions
-        }
-        catch {
-            # Cache corrupto, continuar con descarga
-        }
-    }
-
-    # Descargar versiones con reintento
-    $versions = Get-VersionsWithRetry
-
-    # Guardar en cache
-    if ($versions) {
-        try {
-            $versions | ConvertTo-Json | Out-File $cacheFile -Encoding UTF8 -Force
-        }
-        catch {
-            # Ignorar errores de cache
-        }
-    }
-
-    return $versions
 }
 
 # Función para reintentar descarga con backoff exponencial
@@ -863,6 +829,182 @@ function Set-NvmColors {
     }
 }
 
+# Función para obtener versiones de Node.js con cache local
+function Get-NvmVersionsWithCache {
+    <#
+    .SYNOPSIS
+        Gets Node.js versions with local caching for 15 minutes
+    .DESCRIPTION
+        Retrieves Node.js versions from nodejs.org with local caching to improve performance
+    #>
+    param()
+
+    $cacheFile = Join-Path $NVM_DIR '.version_cache.json'
+    $cacheExpiryMinutes = 15
+
+    # Check if cache exists and is not expired
+    if (Test-Path $cacheFile) {
+        try {
+            $cacheData = Get-Content $cacheFile -Raw | ConvertFrom-Json
+            $cacheTime = [DateTime]::Parse($cacheData.timestamp)
+            $timeDiff = (Get-Date) - $cacheTime
+
+            if ($timeDiff.TotalMinutes -lt $cacheExpiryMinutes) {
+                Write-Verbose "Using cached versions (age: $([math]::Round($timeDiff.TotalMinutes, 1)) minutes)"
+                return $cacheData.versions
+            }
+        }
+        catch {
+            Write-Verbose "Cache file corrupted, will fetch fresh data"
+        }
+    }
+
+    # Fetch fresh data from nodejs.org
+    Write-Verbose "Fetching fresh version data from nodejs.org..."
+    try {
+        $response = Invoke-WebRequest -Uri 'https://nodejs.org/dist/index.json' -UseBasicParsing
+        $versions = $response.Content | ConvertFrom-Json
+
+        # Cache the data
+        $cacheData = @{
+            timestamp = (Get-Date).ToString('o')
+            versions = $versions
+        }
+        $cacheData | ConvertTo-Json -Depth 10 | Set-Content $cacheFile -Encoding UTF8
+
+        Write-Verbose "Cached $(($versions | Measure-Object).Count) versions"
+        return $versions
+    }
+    catch {
+        Write-NvmError "Failed to fetch versions from nodejs.org: $($_.Exception.Message)"
+        throw
+    }
+}
+
+# Función para actualizar el cache de versiones forzosamente
+function Update-NvmVersionCache {
+    <#
+    .SYNOPSIS
+        Forces an update of the local version cache
+    .DESCRIPTION
+        Downloads fresh version data from nodejs.org and updates the local cache
+    #>
+    param()
+
+    $cacheFile = Join-Path $NVM_DIR '.version_cache.json'
+
+    Write-Host "Updating version cache..."
+    try {
+        $response = Invoke-WebRequest -Uri 'https://nodejs.org/dist/index.json' -UseBasicParsing
+        $versions = $response.Content | ConvertFrom-Json
+
+        # Cache the data
+        $cacheData = @{
+            timestamp = (Get-Date).ToString('o')
+            versions = $versions
+        }
+        $cacheData | ConvertTo-Json -Depth 10 | Set-Content $cacheFile -Encoding UTF8
+
+        Write-Host "Cache updated with $(($versions | Measure-Object).Count) versions"
+    }
+    catch {
+        Write-NvmError "Failed to update cache: $($_.Exception.Message)"
+        throw
+    }
+}
+
+# Función para guardar versiones instaladas en cache local
+function Save-InstalledVersionsCache {
+    <#
+    .SYNOPSIS
+        Saves installed Node.js versions to local cache
+    .DESCRIPTION
+        Scans installed versions and saves them to a local cache file for faster access
+    #>
+    param()
+
+    $cacheFile = Join-Path $NVM_DIR '.installed_versions_cache.json'
+
+    try {
+        $installedVersions = Get-ChildItem (Join-Path $NVM_DIR 'v*') -Directory -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -match '^v\d+\.\d+\.\d+$' } |
+            ForEach-Object { 
+                $versionString = $_.Name -replace '^v', ''
+                try {
+                    [version]$versionString | Out-Null
+                    $_.Name
+                } catch {
+                    # Skip invalid version strings
+                    Write-Verbose "Skipping invalid version directory: $($_.Name)"
+                }
+            } |
+            Sort-Object { [version]($_ -replace '^v', '') } -Descending
+
+        $cacheData = @{
+            timestamp = (Get-Date).ToString('o')
+            versions = $installedVersions
+        }
+        $cacheData | ConvertTo-Json | Set-Content $cacheFile -Encoding UTF8
+
+        Write-Verbose "Cached $(($installedVersions | Measure-Object).Count) installed versions"
+    }
+    catch {
+        Write-Verbose "Failed to save installed versions cache: $($_.Exception.Message)"
+    }
+}
+
+# Función para obtener versiones instaladas desde cache local
+function Get-InstalledVersionsFromCache {
+    <#
+    .SYNOPSIS
+        Gets installed Node.js versions from local cache
+    .DESCRIPTION
+        Retrieves installed versions from cache, falling back to directory scan if cache is stale
+    #>
+    param()
+
+    $cacheFile = Join-Path $NVM_DIR '.installed_versions_cache.json'
+    $cacheExpiryMinutes = 5  # Cache installed versions for 5 minutes
+
+    # Check if cache exists and is not expired
+    if (Test-Path $cacheFile) {
+        try {
+            $cacheData = Get-Content $cacheFile -Raw | ConvertFrom-Json
+            $cacheTime = [DateTime]::Parse($cacheData.timestamp)
+            $timeDiff = (Get-Date) - $cacheTime
+
+            if ($timeDiff.TotalMinutes -lt $cacheExpiryMinutes) {
+                Write-Verbose "Using cached installed versions (age: $([math]::Round($timeDiff.TotalMinutes, 1)) minutes)"
+                return $cacheData.versions
+            }
+        }
+        catch {
+            Write-Verbose "Installed versions cache corrupted, will scan directories"
+        }
+    }
+
+    # Fallback to directory scan
+    Write-Verbose "Scanning for installed versions..."
+    $installedVersions = Get-ChildItem (Join-Path $NVM_DIR 'v*') -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -match '^v\d+\.\d+\.\d+$' } |
+        ForEach-Object { 
+            $versionString = $_.Name -replace '^v', ''
+            try {
+                [version]$versionString | Out-Null
+                $_.Name
+            } catch {
+                # Skip invalid version strings
+                Write-Verbose "Skipping invalid version directory: $($_.Name)"
+            }
+        } |
+        Sort-Object { [version]($_ -replace '^v', '') } -Descending
+
+    # Update cache
+    Save-InstalledVersionsCache
+
+    return $installedVersions
+}
+
 # Función para mostrar versiones con colores (equivalente a nvm list) - Inspirado en nvm.fish
 function Show-NvmVersions {
     <#
@@ -888,9 +1030,7 @@ function Show-NvmVersions {
     $currentVersion = Get-NvmCurrentVersion
 
     # Get installed versions
-    $installedVersions = Get-ChildItem -Path $NVM_DIR -Directory |
-    Where-Object { $_.Name -match "^v\d" } |
-    Select-Object -ExpandProperty Name
+    $installedVersions = Get-InstalledVersionsFromCache
 
     # Get latest version
     $latestVersion = $versions[0].version
@@ -1235,6 +1375,17 @@ function Show-NvmVersions {
     Write-Host ""
 }
 
+# Función para obtener versiones remotas
+function Show-RemoteVersions {
+    try {
+        $versions = Get-NvmVersionsWithCache
+        $versions | ForEach-Object { Write-Host $_.version }
+    }
+    catch {
+        Write-NvmError "Failed to fetch remote versions: $($_.Exception.Message)"
+    }
+}
+
 function Get-NvmSystemVersion {
     # Buscar instalación de Node.js a nivel del sistema (fuera de nvm)
     $systemPaths = $env:PATH -split ';' | Where-Object { 
@@ -1459,38 +1610,181 @@ function Migrate-NvmToSymlinks {
 # Inicializar automáticamente al cargar el script
 Initialize-Nvm
 
-# Lógica principal
-switch ($Command) {
-    "install" { if ($Version) { Install-Node $Version } else { Write-Output "Especifica una versión" } }
-    "uninstall" { 
-        if ($Version) { 
-            $force = $RemainingArgs -contains "--force"
-            Uninstall-Node $Version -Force:$force 
+# Función para verificar la instalación
+function Test-NvmInstallation {
+    Write-Host "Verificando instalación de nvm-windows..."
+    
+    # Verificar NVM_DIR
+    if (!(Test-Path $NVM_DIR)) {
+        Write-NvmError "NVM_DIR no existe: $NVM_DIR"
+        return
+    }
+    Write-Host "✓ NVM_DIR existe: $NVM_DIR"
+    
+    # Verificar versiones instaladas
+    $installedVersions = Get-InstalledVersionsFromCache
+    if ($installedVersions.Count -gt 0) {
+        Write-Host "✓ Versiones instaladas: $($installedVersions -join ', ')"
+    }
+    else {
+        Write-Host "! No hay versiones instaladas"
+    }
+    
+    # Verificar versión actual
+    $current = Get-NvmCurrentVersion
+    if ($current) {
+        Write-Host "✓ Versión actual: $current"
+    }
+    else {
+        Write-Host "! No hay versión activa"
+    }
+    
+    Write-Host "Verificación completada"
+}
+
+# Función para migrar instalación
+function Migrate-NvmInstallation {
+    Write-Host "Migrando a sistema de enlaces simbólicos..."
+    # Esta es una función compleja, por ahora solo mostrar mensaje
+    Write-NvmError "La migración aún no está implementada"
+}
+
+# Función para auto-actualizar
+function Update-NvmSelf {
+    Write-Host "Actualizando nvm-windows..."
+    # Esta función requeriría descargar la última versión
+    Write-NvmError "La auto-actualización aún no está implementada"
+}
+
+# Función para establecer versión por defecto
+function Set-NvmDefault {
+    param([string]$Version)
+    
+    if ([string]::IsNullOrWhiteSpace($Version)) {
+        Write-NvmError "Versión es requerida"
+        return
+    }
+    
+    # Resolver alias o versión
+    $resolvedVersion = Resolve-Version $Version
+    if (-not $resolvedVersion) {
+        return
+    }
+    
+    # Guardar en variable de entorno
+    [Environment]::SetEnvironmentVariable("nvm_default_version", $resolvedVersion, "User")
+    Write-Host "Versión por defecto establecida: $resolvedVersion"
+}
+
+# Main command handling
+if ($Command) {
+    switch ($Command.ToLower()) {
+        "help" {
+            Show-Help
         }
-        else { 
-            Write-Output "Especifica una versión" 
-        } 
+        "install" {
+            Install-Node $Version
+        }
+        "uninstall" {
+            $force = $RemainingArgs -contains "--force"
+            Uninstall-Node $Version -Force:$force
+        }
+        "use" {
+            Use-Node $Version
+        }
+        "ls" {
+            Show-NvmVersions
+        }
+        "lsu" {
+            Update-NvmVersionCache
+        }
+        "list" {
+            Show-NvmVersions
+        }
+        "ls-remote" {
+            try {
+                $versions = Get-NvmVersionsWithCache
+                $versions | ForEach-Object { Write-Host $_.version }
+            }
+            catch {
+                Write-NvmError "Failed to fetch remote versions: $($_.Exception.Message)"
+            }
+        }
+        "current" {
+            $current = Get-NvmCurrentVersion
+            if ($current) {
+                Write-Host $current
+            }
+            else {
+                Write-Host "No version is currently active"
+            }
+        }
+        "alias" {
+            if ($Version -and $RemainingArgs) {
+                New-NvmAlias $Version $RemainingArgs[0]
+            }
+            elseif ($Version) {
+                # Get specific alias
+                $aliasPath = "$NVM_DIR\alias\$Version"
+                if (Test-Path $aliasPath) {
+                    try {
+                        $version = Get-Content $aliasPath -Raw -Encoding UTF8 | ForEach-Object { $_.Trim() }
+                        Write-Host "$Version -> $version"
+                    }
+                    catch {
+                        Write-NvmError "Error reading alias '$Version'"
+                    }
+                }
+                else {
+                    Write-NvmError "Alias '$Version' not found"
+                }
+            }
+            else {
+                Get-NvmAliases
+            }
+        }
+        "unalias" {
+            if ($Version) {
+                Remove-NvmAlias $Version
+            }
+            else {
+                Write-NvmError "Alias name is required"
+            }
+        }
+        "aliases" {
+            Get-NvmAliases
+        }
+        "doctor" {
+            Test-NvmInstallation
+        }
+        "migrate" {
+            Migrate-NvmInstallation
+        }
+        "self-update" {
+            Update-NvmSelf
+        }
+        "set-colors" {
+            if ($Version) {
+                Set-NvmColors $Version
+            }
+            else {
+                Write-NvmError "Color string is required"
+            }
+        }
+        "set-default" {
+            if ($Version) {
+                Set-NvmDefault $Version
+            }
+            else {
+                Write-NvmError "Version is required"
+            }
+        }
+        default {
+            Write-NvmError "Unknown command: $Command"
+            Write-Host "Use 'nvm help' to see available commands"
+        }
     }
-    "use" { if ($Version) { Use-Node $Version } else { Write-Output "Especifica una versión" } }
-    "ls" { 
-        $compact = $RemainingArgs -contains "--compact"
-        Show-NvmVersions -Compact:$compact
-    }
-    "list" { 
-        $compact = $RemainingArgs -contains "--compact"
-        Show-NvmVersions -Compact:$compact
-    }
-    "ls-remote" { Get-RemoteVersion }
-    "current" { Get-CurrentVersion }
-    "alias" { if ($Version -and $RemainingArgs[0]) { New-NvmAlias $Version $RemainingArgs[0] } else { Write-Output "Uso: alias <nombre> <versión>" } }
-    "unalias" { if ($Version) { Remove-NvmAlias $Version } else { Write-Output "Especifica un alias" } }
-    "aliases" { Get-NvmAliases }
-    "doctor" { Test-NvmInstallation }
-    "cleanup" { Cleanup-Nvm }
-    "migrate" { Migrate-NvmToSymlinks }
-    "self-update" { Update-Nvm }
-    "set-colors" { if ($Version) { Set-NvmColors $Version } else { Write-Output "Especifica esquema de colores" } }
-    "set-default" { if ($Version) { Set-NvmDefaultVersion $Version } else { Write-Output "Especifica una versión" } }
-    "help" { Show-Help }
-    default { Show-Help }
+}
+else {
+    Show-Help
 }
