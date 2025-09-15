@@ -1205,7 +1205,11 @@ function Show-NvmVersions {
 
         Write-Host "  " -NoNewline
         Write-NvmColoredText "$label$padding" "y" -NoNewline  # Yellow for LTS labels
-        Write-NvmColoredText "$formattedVersion" "e" -NoNewline  # Gray for LTS versions
+        if ($isInstalled) {
+            Write-NvmColoredText "$formattedVersion" "e" -NoNewline  # Gray for installed LTS versions
+        } else {
+            Write-NvmColoredText "$formattedVersion" "k" -NoNewline  # Darker/muted for non-installed LTS versions
+        }
         Write-Host "$finalSpaces" -NoNewline
         if ($isInstalled) {
             Write-NvmColoredText "✓" "G"
