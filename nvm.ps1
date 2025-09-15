@@ -1023,10 +1023,10 @@ function Show-NvmVersions {
         $spacesNeeded = $totalWidth - $lineContent.Length - ($isInstalled ? 1 : 0)  # -1 for the ✓
         $finalSpaces = " " * [Math]::Max(1, $spacesNeeded)
 
-        # Color output: → in blue (default), label in gray, version in blue (default), ✓ in blue
-        Write-NvmColoredText "→" "b" -NoNewline
+        # Color output: → in cyan, label in gray, version in cyan, ✓ in magenta
+        Write-NvmColoredText "→" "c" -NoNewline
         Write-NvmColoredText " $label$padding" "e" -NoNewline
-        Write-NvmColoredText "$formattedVersion" "b" -NoNewline
+        Write-NvmColoredText "$formattedVersion" "c" -NoNewline
         Write-Host "$finalSpaces" -NoNewline
         if ($isInstalled) {
             Write-NvmColoredText "✓" "M"
@@ -1144,9 +1144,17 @@ function Show-NvmVersions {
 
     # .nvmrc version (if exists)
     if ($nvmrcVersion) {
-        $isInstalled = $installedVersions -contains $nvmrcVersion
-        $isCurrent = $currentVersion -eq $nvmrcVersion
-        
+        # Resolver la versión del .nvmrc (convertir aliases como 'lts' a versiones específicas)
+        $resolvedNvmrcVersion = Resolve-Version $nvmrcVersion
+        if ($resolvedNvmrcVersion) {
+            $normalizedNvmrcVersion = Normalize-Version $resolvedNvmrcVersion
+            $isInstalled = $installedVersions -contains $normalizedNvmrcVersion
+            $isCurrent = $currentVersion -eq $normalizedNvmrcVersion
+        } else {
+            $isInstalled = $false
+            $isCurrent = $false
+        }
+
         if ($isCurrent) {
             # If .nvmrc version is current, show as ▶ .nvmrc: with ✓
             $indicator = "▶"
@@ -1162,12 +1170,10 @@ function Show-NvmVersions {
             $indicator = "•"
             $showCheckmark = $false
         }
+
         $label = ".nvmrc:"
         $padding = " " * (14 - $label.Length)
         $formattedVersion = Format-Version $nvmrcVersion
-        $lineContent = "$indicator $label$padding$formattedVersion"
-        $spacesNeeded = $totalWidth - $lineContent.Length - ($showCheckmark ? 1 : 0)
-        $finalSpaces = " " * [Math]::Max(1, $spacesNeeded)
 
         # Color indicator
         if ($isCurrent) {
@@ -1176,8 +1182,8 @@ function Show-NvmVersions {
         else {
             Write-NvmColoredText "ϟ" "Y" -NoNewline
         }
-        Write-NvmColoredText " $label$padding" "e" -NoNewline
-        Write-NvmColoredText "$formattedVersion" "e" -NoNewline
+        Write-NvmColoredText " $label$padding" "m" -NoNewline
+        Write-NvmColoredText "$formattedVersion" "m" -NoNewline
         Write-Host "$finalSpaces" -NoNewline
         if ($showCheckmark) {
             Write-NvmColoredText "✓" "M"
