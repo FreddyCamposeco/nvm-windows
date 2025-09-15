@@ -309,6 +309,11 @@ function Get-NvmrcVersion {
     try {
         $version = Get-Content $fileInfo.Path -Raw -Encoding UTF8 | ForEach-Object { $_.Trim() }
 
+        # Si el archivo está vacío, ignorarlo silenciosamente
+        if ([string]::IsNullOrWhiteSpace($version)) {
+            return $null
+        }
+
         # Validar versión
         if (-not (Test-NvmrcVersion $version)) {
             Write-NvmError "Versión inválida en $($fileInfo.Path): $version"
