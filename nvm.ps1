@@ -1272,6 +1272,19 @@ function Get-NvmActiveVersion {
     return $null
 }
 
+# Función para establecer la versión activa
+function Set-NvmActiveVersion {
+    param([string]$Version)
+    
+    $activeFile = "$NVM_DIR\.active_version"
+    try {
+        $Version | Out-File -FilePath $activeFile -Encoding UTF8 -NoNewline
+    }
+    catch {
+        Write-NvmError "Error al guardar la versión activa: $($_.Exception.Message)"
+    }
+}
+
 # Función para obtener la versión actual de Node.js activa
 function Get-NvmCurrentVersion {
     # Primero intentar con enlaces simbólicos en current\bin
