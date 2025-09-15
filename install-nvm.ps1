@@ -26,16 +26,16 @@ function Uninstall-NVM {
         }
     }
     $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
-    if ($currentPath -like "*$NVM_DIR*") {
-        $newPath = ($currentPath -split ";" | Where-Object { $_ -ne $NVM_DIR -and $_ -notlike "*nvm*" }) -join ";"
+    if ($currentPath -like "*nvm*") {
+        $newPath = ($currentPath -split ";" | Where-Object { $_ -notlike "*nvm*" }) -join ";"
         [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
         Write-Host "✓ Removido del PATH del usuario" -ForegroundColor Green
     } else {
         Write-Host "ℹ nvm no estaba en PATH" -ForegroundColor Gray
     }
     $systemPath = [Environment]::GetEnvironmentVariable("Path", "Machine")
-    if ($systemPath -like "*$NVM_DIR*") {
-        $newSystemPath = ($systemPath -split ";" | Where-Object { $_ -ne $NVM_DIR -and $_ -notlike "*nvm*" }) -join ";"
+    if ($systemPath -like "*nvm*") {
+        $newSystemPath = ($systemPath -split ";" | Where-Object { $_ -notlike "*nvm*" }) -join ";"
         [Environment]::SetEnvironmentVariable("Path", $newSystemPath, "Machine")
         Write-Host "✓ Removido del PATH del sistema" -ForegroundColor Green
     }
