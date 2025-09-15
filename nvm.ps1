@@ -1015,25 +1015,18 @@ function Show-NvmVersions {
     # Show global version (always shown with →)
     $globalVersion = $defaultVersion
     if ($globalVersion) {
-        $isInstalled = $installedVersions -contains $globalVersion
         $label = "global:"
         $padding = " " * (14 - $label.Length)  # Fixed padding for labels
         $formattedVersion = Format-Version $globalVersion
         $lineContent = "→ $label$padding$formattedVersion"
-        $spacesNeeded = $totalWidth - $lineContent.Length - ($isInstalled ? 1 : 0)  # -1 for the ✓
+        $spacesNeeded = $totalWidth - $lineContent.Length  # No checkmark for global
         $finalSpaces = " " * [Math]::Max(1, $spacesNeeded)
 
-        # Color output: → in cyan, label in gray, version in cyan, ✓ in magenta
+        # Color output: → in cyan, label in gray, version in cyan (no checkmark for global)
         Write-NvmColoredText "→" "c" -NoNewline
         Write-NvmColoredText " $label$padding" "e" -NoNewline
         Write-NvmColoredText "$formattedVersion" "c" -NoNewline
-        Write-Host "$finalSpaces" -NoNewline
-        if ($isInstalled) {
-            Write-NvmColoredText "✓" "M"
-        }
-        else {
-            Write-Host ""
-        }
+        Write-Host "$finalSpaces"
     }
 
     # Show default version if different from global
@@ -1158,17 +1151,14 @@ function Show-NvmVersions {
         if ($isCurrent) {
             # If .nvmrc version is current, show as ▶ .nvmrc: with ✓
             $indicator = "▶"
-            $showCheckmark = $true
         }
         elseif ($isInstalled) {
-            # If installed but not current, show as • .nvmrc: with ✓
-            $indicator = "•"
-            $showCheckmark = $true
+            # If installed but not current, show as ϟ .nvmrc: with ✓
+            $indicator = "ϟ"
         }
         else {
-            # If not installed, show as • .nvmrc: without ✓
-            $indicator = "•"
-            $showCheckmark = $false
+            # If not installed, show as ϟ .nvmrc: with ✗
+            $indicator = "ϟ"
         }
 
         $label = ".nvmrc:"
@@ -1185,11 +1175,11 @@ function Show-NvmVersions {
         Write-NvmColoredText " $label$padding" "m" -NoNewline
         Write-NvmColoredText "$formattedVersion" "m" -NoNewline
         Write-Host "$finalSpaces" -NoNewline
-        if ($showCheckmark) {
-            Write-NvmColoredText "✓" "M"
+        if ($isInstalled) {
+            Write-NvmColoredText "✓" "G"  # Green checkmark if installed
         }
         else {
-            Write-Host ""
+            Write-NvmColoredText "✗" "R"  # Red X if not installed
         }
     }
 
@@ -1213,7 +1203,7 @@ function Show-NvmVersions {
                 "▶" 
             }
             elseif ($nvmrcVersion -and $normalizedVersion -eq (Normalize-Version $nvmrcVersion)) {
-                "•"
+                "ϟ"
             }
             else { 
                 " " 
