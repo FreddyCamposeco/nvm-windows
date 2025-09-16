@@ -1,4 +1,4 @@
-# nvm-windows v2.4-beta 🚀
+# nvm-windows v2.5 🚀
 
 > Node Version Manager para Windows nativo con PowerShell
 
@@ -20,20 +20,23 @@
 - 📦 **Compatibilidad Total**: Funciona con npm, yarn, pnpm y más
 - ⚡ **Cache Local Inteligente**: Acelera comandos y reduce tráfico de red
 - 🎨 **Diseño Visual Coherente**: Colores y formato perfectamente alineados
+- 🧪 **Suite de Tests Completa**: Tests automatizados organizados en directorio dedicado
+- 🔧 **Gestión Automática de Variables**: Variables de entorno gestionadas automáticamente
+- ✅ **Scripts de Verificación**: Herramientas avanzadas para validar instalación
 
 [![Estado](https://img.shields.io/badge/Estado-Beta-orange.svg)](https://github.com/FreddyCamposeco/nvm-windows)
-[![Versión](https://img.shields.io/badge/Versi%C3%B3n-2.4--beta-blue.svg)](https://github.com/FreddyCamposeco/nvm-windows)
+[![Versión](https://img.shields.io/badge/Versi%C3%B3n-2.5-blue.svg)](https://github.com/FreddyCamposeco/nvm-windows)
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1+-blue.svg)](https://github.com/PowerShell/PowerShell)
 
 Una adaptación completa de [nvm](https://github.com/nvm-sh/nvm) para Windows n
 
-## 🔗 Sistema de Enlaces Simbólicos (v2.4-beta)
+## 🔗 Sistema de Enlaces Simbólicos (v2.5)
 
-La versión 2.4 introduce un **sistema revolucionario de enlaces simbólicos** que elimina la manipulación directa del PATH para cada cambio de versión:
+La versión 2.5 incluye el **sistema revolucionario de enlaces simbólicos** que elimina la manipulación directa del PATH para cada cambio de versión, junto con **mejoras significativas en la gestión automática de variables de entorno**.
 
 ### Cómo funciona
 
-- **Ubicación virtual fija**: `$NVM_DIR\current\bin` se agrega al PATH una sola vez durante la instalación
+- **Ubicación virtual fija**: `$NVM_DIR\current\` se agrega al PATH una sola vez durante la instalación
 - **Enlaces dinámicos**: Los ejecutables de Node.js se enlazan simbólicamente desde la versión instalada a la ubicación virtual
 - **Cambios instantáneos**: `nvm use <versión>` actualiza enlaces simbólicos en lugar de modificar PATH
 
@@ -180,16 +183,16 @@ nvm cleanup
 
 ### Gestión de Versiones
 
-| Comando                 | Descripción                          | Ejemplo               |
-| ----------------------- | ------------------------------------ | --------------------- |
-| `nvm install <versión>` | Instala una versión (soporta aliases)| `nvm install lts`     |
-| `nvm use <versión>`     | Cambia a una versión o usa .nvmrc    | `nvm use`             |
-| `nvm ls` / `nvm list`   | Lista versiones instaladas con LTS y estado | `nvm ls`              |
-| `nvm lsu`                | Fuerza actualización del cache de versiones | `nvm lsu`             |
-| `nvm ls-remote`          | Lista versiones disponibles para descargar | `nvm ls-remote`       |
-| `nvm current`           | Muestra versión actual               | `nvm current`         |
-| `nvm auto on/off/status`| Controla auto-cambio con .nvmrc      | `nvm auto on`         |
-| `nvm auto setup`        | Instala hook de auto-cambio          | `nvm auto setup`      |
+| Comando                             | Descripción                                              | Ejemplo                         |
+| ----------------------------------- | -------------------------------------------------------- | ------------------------------- |
+| `nvm install <versión>`             | Instala una versión (soporta aliases)                    | `nvm install lts`               |
+| `nvm use <versión>`                 | Cambia a una versión o usa .nvmrc                        | `nvm use`                       |
+| `nvm ls` / `nvm list`               | Lista versiones instaladas con LTS y estado              | `nvm ls`                        |
+| `nvm lsu`                           | Fuerza actualización del cache de versiones              | `nvm lsu`                       |
+| `nvm ls-remote`                     | Lista versiones disponibles para descargar               | `nvm ls-remote`                 |
+| `nvm current`                       | Muestra versión actual                                   | `nvm current`                   |
+| `nvm auto on/off/status`            | Controla auto-cambio con .nvmrc                          | `nvm auto on`                   |
+| `nvm auto setup`                    | Instala hook de auto-cambio                              | `nvm auto setup`                |
 | `nvm uninstall <versión> [--force]` | Desinstala una versión (usa --force para versión activa) | `nvm uninstall 20.19.5 --force` |
 
 ### Sistema de Alias
@@ -203,32 +206,35 @@ nvm cleanup
 
 ### Utilidades
 
-| Comando                    | Descripción                          | Ejemplo                |
-| -------------------------- | ------------------------------------ | ---------------------- |
-| `nvm doctor`               | Verifica instalación                 | `nvm doctor`           |
-| `nvm migrate`              | Migra al sistema de enlaces simbólicos | `nvm migrate`          |
-| `nvm self-update`          | Actualiza nvm-windows                | `nvm self-update`      |
-| `nvm cleanup`              | Elimina versiones innecesarias (mantiene actual y LTS) | `nvm cleanup`          |
-| `nvm set-default <versión>`| Establece versión por defecto        | `nvm set-default lts`  |
-| `nvm set-colors <esquema>` | Configura colores                    | `nvm set-colors bygre` |
-| `nvm help`                 | Muestra ayuda completa               | `nvm help`             |
+| Comando                     | Descripción                                            | Ejemplo                |
+| --------------------------- | ------------------------------------------------------ | ---------------------- |
+| `nvm doctor`                | Verifica instalación                                   | `nvm doctor`           |
+| `nvm migrate`               | Migra al sistema de enlaces simbólicos                 | `nvm migrate`          |
+| `nvm self-update`           | Actualiza nvm-windows                                  | `nvm self-update`      |
+| `nvm cleanup`               | Elimina versiones innecesarias (mantiene actual y LTS) | `nvm cleanup`          |
+| `nvm set-default <versión>` | Establece versión por defecto                          | `nvm set-default lts`  |
+| `nvm set-colors <esquema>`  | Configura colores                                      | `nvm set-colors bygre` |
+| `nvm help`                  | Muestra ayuda completa                                 | `nvm help`             |
 
-## 🧪 Testing y Validación
+## 🧪 Testing y Validación (v2.5)
 
-nvm-windows incluye una **suite completa de tests automatizados** para verificar la integridad del proyecto:
+nvm-windows incluye una **suite completa de tests automatizados** organizada en un directorio dedicado (`tests/`) para verificar la integridad del proyecto:
 
 ```powershell
-# Ejecutar todos los tests
-.\nvm.tests.ps1
+# Ejecutar todos los tests desde el directorio raíz
+.\tests\nvm.tests.ps1
+
+# Ejecutar verificación básica de instalación
+.\tests\basic-check.ps1
+
+# Ejecutar verificación completa del sistema
+.\tests\verify-complete-installation.ps1
 
 # Ejecutar con output detallado
-.\nvm.tests.ps1 -Verbose
-
-# Ejecutar tests específicos
-.\nvm.tests.ps1 -TestNames "Sintaxis", "Comandos"
+.\tests\nvm.tests.ps1 -Verbose
 ```
 
-### Tests Incluidos (13 tests)
+### Tests Incluidos (13 tests organizados)
 
 **Verificación de Sintaxis:**
 
@@ -248,6 +254,14 @@ nvm-windows incluye una **suite completa de tests automatizados** para verificar
 - ✅ Existencia de archivos requeridos (`.nvmrc`, `LICENSE`, `README.md`)
 - ✅ Estructura de directorios
 - ✅ Módulos requeridos
+
+**Scripts de Verificación (Nuevos en v2.5):**
+
+- ✅ `basic-check.ps1` - Verificación básica de instalación
+- ✅ `verify-installation.ps1` - Verificación simplificada
+- ✅ `verify-complete-installation.ps1` - Verificación completa del sistema
+- ✅ `test-env-vars.ps1` - Prueba de gestión de variables de entorno
+- ✅ `simple-verification.ps1` - Verificación rápida
 
 **Códigos de Salida:**
 
@@ -298,20 +312,32 @@ Available (non-LTS):
 
 ### Archivos Principales
 
-| Archivo | Descripción |
-|---------|-------------|
-| `nvm.ps1` | Script principal de nvm-windows con todas las funcionalidades |
-| `install-nvm.ps1` | Instalador automático para configuración inicial |
-| `README.md` | Esta documentación completa |
-| `nvm.cmd` | Wrapper para compatibilidad con CMD |
-| `nvm-wrapper.cmd` | Wrapper adicional para entornos específicos |
+| Archivo           | Descripción                                                               |
+| ----------------- | ------------------------------------------------------------------------- |
+| `nvm.ps1`         | Script principal de nvm-windows con todas las funcionalidades             |
+| `install-nvm.ps1` | Instalador automático para configuración inicial con gestión de variables |
+| `README.md`       | Esta documentación completa                                               |
+| `nvm.cmd`         | Wrapper para compatibilidad con CMD                                       |
+| `nvm-wrapper.cmd` | Wrapper adicional para entornos específicos                               |
+
+### Sistema de Tests (Nuevo en v2.5)
+
+| Archivo                                  | Descripción                               | Ubicación |
+| ---------------------------------------- | ----------------------------------------- | --------- |
+| `tests/nvm.tests.ps1`                    | Suite completa de tests automatizados     | `tests/`  |
+| `tests/basic-check.ps1`                  | Verificación básica de instalación        | `tests/`  |
+| `tests/verify-complete-installation.ps1` | Verificación completa del sistema         | `tests/`  |
+| `tests/verify-installation.ps1`          | Verificación simplificada                 | `tests/`  |
+| `tests/test-env-vars.ps1`                | Prueba de gestión de variables de entorno | `tests/`  |
+| `tests/simple-verification.ps1`          | Verificación rápida                       | `tests/`  |
+| `tests/README.md`                        | Documentación completa de tests           | `tests/`  |
 
 ### Sistema de Cache
 
-| Archivo | Descripción | Ubicación |
-|---------|-------------|-----------|
-| `.version_cache.json` | Cache de versiones remotas (15 min) | `$NVM_DIR\` |
-| `.installed_versions_cache.json` | Cache de versiones instaladas (5 min) | `$NVM_DIR\` |
+| Archivo                          | Descripción                   | Ubicación   |
+| -------------------------------- | ----------------------------- | ----------- |
+| `.version_cache.json`            | Cache de versiones remotas    | `$NVM_DIR\` |
+| `.installed_versions_cache.json` | Cache de versiones instaladas | `$NVM_DIR\` |
 
 ## 🎨 Personalización de Colores
 
@@ -379,16 +405,16 @@ El proyecto incluye un **archivo HTML de referencia** (`layout.html`) que replic
 
 ### Esquema de Colores CSS
 
-| Elemento | Color CSS | Descripción |
-|----------|-----------|-------------|
-| `→ global:` | `--cyan` | Versión global actual |
-| `latest:` | `--cyan` | Última versión disponible |
-| `lts/*:` | `--yellow` | Etiquetas de versiones LTS |
-| Versiones instaladas | `--fg` | Texto normal |
-| Versiones no instaladas | `--muted` | Gris apagado |
-| `.nvmrc:` | `--purple` | Archivo de configuración |
-| `✓` | `--green` | Instalado correctamente |
-| `✗` | `--red` | No instalado |
+| Elemento                | Color CSS  | Descripción                |
+| ----------------------- | ---------- | -------------------------- |
+| `→ global:`             | `--cyan`   | Versión global actual      |
+| `latest:`               | `--cyan`   | Última versión disponible  |
+| `lts/*:`                | `--yellow` | Etiquetas de versiones LTS |
+| Versiones instaladas    | `--fg`     | Texto normal               |
+| Versiones no instaladas | `--muted`  | Gris apagado               |
+| `.nvmrc:`               | `--purple` | Archivo de configuración   |
+| `✓`                     | `--green`  | Instalado correctamente    |
+| `✗`                     | `--red`    | No instalado               |
 
 ### Uso del Layout HTML
 
@@ -611,7 +637,7 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para
 
 ## 📦 Estructura del Repositorio
 
-Después de la limpieza v2.4-beta, el repositorio contiene solo los archivos esenciales:
+Después de la limpieza y reorganización v2.5, el repositorio contiene una estructura optimizada:
 
 ```text
 nvm-windows/
@@ -624,8 +650,15 @@ nvm-windows/
 │   ├── nvm-use.ps1      # Cambio de versiones activas
 │   ├── nvm-aliases.ps1  # Gestión de aliases
 │   └── nvm-main.ps1     # Lógica principal y comandos
-├── nvm.tests.ps1        # Suite completa de tests (13 tests)
-├── install-nvm.ps1      # Instalador avanzado con desinstalación
+├── tests/               # 🆕 Suite completa de tests organizados
+│   ├── nvm.tests.ps1    # Tests automatizados principales
+│   ├── basic-check.ps1  # Verificación básica
+│   ├── verify-complete-installation.ps1 # Verificación completa
+│   ├── verify-installation.ps1 # Verificación simplificada
+│   ├── test-env-vars.ps1 # Tests de variables de entorno
+│   ├── simple-verification.ps1 # Verificación rápida
+│   └── README.md        # Documentación de tests
+├── install-nvm.ps1      # Instalador avanzado con gestión automática
 ├── nvm.cmd              # Wrapper para Command Prompt
 ├── nvm-wrapper.cmd      # Wrapper adicional para compatibilidad
 ├── README.md            # Esta documentación completa
@@ -634,13 +667,14 @@ nvm-windows/
 └── .gitignore           # Configuración de Git
 ```
 
-**Novedades en v2.4-beta:**
+**Novedades en v2.5:**
 
-- 🔗 **Sistema de enlaces simbólicos**: Gestión de versiones revolucionaria sin manipulación de PATH
-- 🚀 **Rendimiento mejorado**: Cambios de versión instantáneos
-- 🛡️ **PATH estable**: No se modifica el PATH del sistema para cada cambio
-- 🔄 **Comando migrate**: Migración automática desde versiones anteriores
-- 💾 **Persistencia mejorada**: La versión activa se mantiene entre sesiones
+- 🧪 **Suite de Tests Organizada**: Tests reorganizados en directorio dedicado `tests/`
+- 🔧 **Gestión Automática de Variables**: Variables de entorno gestionadas automáticamente
+- ✅ **Scripts de Verificación Avanzados**: Herramientas completas para validar instalación
+- 🚀 **Rendimiento Mejorado**: Optimizaciones en el sistema de enlaces simbólicos
+- 🛡️ **Mayor Estabilidad**: Corrección de errores de sintaxis y mejoras en robustez
+- 📚 **Documentación Completa**: README actualizado con todas las nuevas funcionalidades
 
 **⭐ Si te gusta este proyecto, ¡dale una estrella en GitHub!**
 
