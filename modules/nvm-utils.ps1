@@ -42,9 +42,10 @@ function Show-Help {
     Write-Output "  r=red (no instaladas), e=gray (por defecto)"
     Write-Output ""
     Write-Output "Variables de entorno:"
-    Write-Output "  NVM_DIR              Directorio de instalación (por defecto: %USERPROFILE%\nvm)"
+    Write-Output "  NVM_DIR              Directorio de instalación (por defecto: %USERPROFILE%\.nvm)"
+    Write-Output '                        Puede configurarse con la variable de entorno $env:NVM_DIR'
     Write-Output "  NVM_COLORS           Esquema de colores personalizado"
-    Write-Output "  NO_COLOR             Desactiva colores (igual que NVM_NO_COLORS=--no-colors)"
+    Write-Output "  NVM_NO_COLOR         Desactiva colores"
     Write-Output ""
     Write-Output "Ejemplos:"
     Write-Output "  nvm install 18.19.0     Instala Node.js v18.19.0"
@@ -64,6 +65,17 @@ function Write-NvmColoredText {
         [string]$ColorCode,
         [switch]$NoNewline
     )
+
+    # Verificar si los colores están deshabilitados
+    if ($env:NVM_NO_COLOR) {
+        # Sin colores, solo escribir el texto
+        if ($NoNewline) {
+            Write-Host $Text -NoNewline
+        } else {
+            Write-Host $Text
+        }
+        return
+    }
 
     # Usar switch en lugar de hash table para evitar problemas
     $foregroundColor = switch ($ColorCode) {
@@ -111,10 +123,18 @@ function Parse-NvmArguments {
     $Command = $null
     $Version = $null
     $RemainingArgs = @()
+    $NoColors = $false
 
     if ($Arguments -and $Arguments.Length -gt 0) {
         $firstArg = $Arguments[0]
-        
+
+        # Verificar si es una opción global
+        if ($firstArg -eq "--no-colors") {
+            $NoColors = $true
+            $Arguments = $Arguments[1..($Arguments.Length - 1)]
+            $firstArg = if ($Arguments.Length -gt 0) { $Arguments[0] } else { $null }
+        }
+
         # Verificar si es una opción de versión
         if ($firstArg -eq "--version" -or $firstArg -eq "-v" -or $firstArg -eq "version") {
             $Command = "version"
@@ -147,5 +167,6 @@ function Parse-NvmArguments {
         Command = $Command
         Version = $Version
         RemainingArgs = $RemainingArgs
+        NoColors = $NoColors
     }
 }

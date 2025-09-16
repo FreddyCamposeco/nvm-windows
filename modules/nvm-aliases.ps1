@@ -101,8 +101,8 @@ function Test-NvmTerminalColors {
     # Windows Terminal, Windows Console Host with Virtual Terminal Processing, or other ANSI-compatible terminals
     $script:NvmHasColors = $true
 
-    # Check for NO_COLOR environment variable
-    if ($env:NO_COLOR -or $env:NVM_NO_COLORS -eq '--no-colors') {
+    # Check for NVM_NO_COLOR environment variable
+    if ($env:NVM_NO_COLOR) {
         $script:NvmHasColors = $false
     }
 

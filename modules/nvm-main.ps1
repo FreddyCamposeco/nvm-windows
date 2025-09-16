@@ -117,57 +117,75 @@ function Show-NvmVersion {
 function Update-NvmSelf {
     Write-Output "Actualizando nvm-windows..."
 
-    $repoUrl = "https://api.github.com/repos/freddyCamposeco/nvm-windows/releases/latest"
+    # Obtener todas las releases y tomar la más reciente (incluyendo pre-releases)
+    $repoUrl = "https://api.github.com/repos/freddyCamposeco/nvm-windows/releases"
 
     try {
-        $release = Invoke-WebRequest -Uri $repoUrl -ErrorAction Stop | ConvertFrom-Json
-        $latestVersion = $release.tag_name
+        $releases = Invoke-WebRequest -Uri $repoUrl -ErrorAction Stop | ConvertFrom-Json
+        $latestRelease = $releases | Where-Object { -not $_.draft } | Select-Object -First 1
+
+        if (-not $latestRelease) {
+            Write-NvmError "No se encontraron releases disponibles"
+            return
+        }
+
+        $latestVersion = $latestRelease.tag_name
         $currentVersion = "v2.4-beta"  # Versión actual hardcodeada
 
         if ($latestVersion -ne $currentVersion) {
             Write-Output "Nueva versión disponible: $latestVersion"
             Write-Output "Descargando actualización..."
 
-            $asset = $release.assets | Where-Object { $_.name -like "*nvm-windows*.zip" } | Select-Object -First 1
-            if ($asset) {
-                $downloadUrl = $asset.browser_download_url
-                $tempZip = "$env:TEMP\nvm-windows-update.zip"
-                $tempDir = "$env:TEMP\nvm-windows-update"
+            # Usar zipball_url para descargar el código fuente completo
+            $downloadUrl = $latestRelease.zipball_url
+            $tempZip = "$env:TEMP\nvm-windows-update.zip"
+            $tempDir = "$env:TEMP\nvm-windows-update"
 
-                # Mostrar información de descarga
-                $fileSize = [math]::Round($asset.size / 1MB, 2)
-                Write-Output "Tamaño: ${fileSize}MB"
+            # Mostrar información de descarga
+            Write-Output "Descargando desde: $downloadUrl"
 
-                # Descargar con progreso
-                Write-Progress -Activity "Actualizando nvm-windows" -Status "Descargando actualización..." -PercentComplete 0
-                $ProgressPreference = 'Continue'
-                Invoke-WebRequest -Uri $downloadUrl -OutFile $tempZip -ErrorAction Stop
-                Write-Progress -Activity "Actualizando nvm-windows" -Status "Descarga completada" -PercentComplete 50 -Completed
-                
-                Write-Output "Extrayendo actualización..."
-                Write-Progress -Activity "Actualizando nvm-windows" -Status "Extrayendo archivos..." -PercentComplete 75
-                Expand-Archive -Path $tempZip -DestinationPath $tempDir -Force
-                Write-Progress -Activity "Actualizando nvm-windows" -Status "Instalando..." -PercentComplete 90
-                Write-Progress -Activity "Actualizando nvm-windows" -Status "Completado" -PercentComplete 100 -Completed
+            # Descargar con progreso
+            Write-Progress -Activity "Actualizando nvm-windows" -Status "Descargando actualización..." -PercentComplete 0
+            $ProgressPreference = 'Continue'
+            Invoke-WebRequest -Uri $downloadUrl -OutFile $tempZip -ErrorAction Stop
+            Write-Progress -Activity "Actualizando nvm-windows" -Status "Descarga completada" -PercentComplete 50 -Completed
 
-                Write-Output "Instalando actualización..."
+            Write-Output "Extrayendo actualización..."
+            Write-Progress -Activity "Actualizando nvm-windows" -Status "Extrayendo archivos..." -PercentComplete 75
+            Expand-Archive -Path $tempZip -DestinationPath $tempDir -Force
+            Write-Progress -Activity "Actualizando nvm-windows" -Status "Instalando..." -PercentComplete 90
+            Write-Progress -Activity "Actualizando nvm-windows" -Status "Completado" -PercentComplete 100 -Completed
 
-                # Copiar archivos actualizados (excepto directorios de versiones)
-                $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-                Get-ChildItem -Path $tempDir -File | ForEach-Object {
-                    Copy-Item $_.FullName -Destination $scriptDir -Force
+            Write-Output "Instalando actualización..."
+
+            # Copiar archivos actualizados (excepto directorios de versiones)
+            $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+            $nvmDir = Split-Path -Parent $scriptDir
+
+            # Encontrar el directorio extraído (GitHub usa un nombre con hash)
+            $extractedDir = Get-ChildItem -Path $tempDir | Where-Object { $_.PSIsContainer } | Select-Object -First 1
+
+            if ($extractedDir) {
+                # Copiar archivos principales
+                Get-ChildItem -Path "$tempDir\$($extractedDir.Name)" -File | ForEach-Object {
+                    Copy-Item $_.FullName -Destination $nvmDir -Force
                 }
 
-                # Limpiar
-                Remove-Item $tempZip -Force
-                Remove-Item $tempDir -Recurse -Force
+                # Copiar módulos si existen
+                $modulesDir = "$tempDir\$($extractedDir.Name)\modules"
+                if (Test-Path $modulesDir) {
+                    Get-ChildItem -Path $modulesDir -File | ForEach-Object {
+                        Copy-Item $_.FullName -Destination "$nvmDir\modules" -Force
+                    }
+                }
+            }
 
-                Write-Output "✓ nvm-windows actualizado a $latestVersion"
-                Write-Output "Reinicia la terminal para aplicar los cambios"
-            }
-            else {
-                Write-NvmError "No se encontró archivo de actualización"
-            }
+            # Limpiar
+            Remove-Item $tempZip -Force -ErrorAction SilentlyContinue
+            Remove-Item $tempDir -Recurse -Force -ErrorAction SilentlyContinue
+
+            Write-Output "✓ nvm-windows actualizado a $latestVersion"
+            Write-Output "Reinicia la terminal para aplicar los cambios"
         }
         else {
             Write-Output "nvm-windows ya está actualizado ($currentVersion)"
@@ -270,11 +288,20 @@ function Invoke-NvmMain {
         return
     }
 
+    # Inicializar configuración de colores
+    $null = Test-NvmTerminalColors
+
     # Parsear argumentos usando la función del módulo utils
     $parsedArgs = Parse-NvmArguments -Arguments $Args
     $Command = $parsedArgs.Command
     $Version = $parsedArgs.Version
     $RemainingArgs = $parsedArgs.RemainingArgs
+    $NoColors = $parsedArgs.NoColors
+
+    # Si se especificó --no-colors, deshabilitar colores
+    if ($NoColors) {
+        $env:NVM_NO_COLOR = "1"
+    }
 
     # Procesar comando
     if ($Command) {

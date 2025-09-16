@@ -130,26 +130,48 @@ function Uninstall-Nvm {
         $NvmDir = "$env:USERPROFILE\.nvm"
     }
 
+    # Preguntar si eliminar versiones instaladas ANTES de limpiar otras configuraciones
+    $deleteVersions = Read-Host "¿Eliminar todas las versiones instaladas de Node.js? (s/n)"
+    $shouldDeleteVersions = ($deleteVersions -eq "s" -or $deleteVersions -eq "S")
+
+    # Remover del PATH (antes de eliminar el directorio)
+    $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    $currentBin = "$NvmDir\current\bin"
+    if ($currentPath -like "*$currentBin*") {
+        $escapedBin = [regex]::Escape($currentBin)
+        $newPath = $currentPath -replace ";$escapedBin", "" -replace "$escapedBin;", ""
+        [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
+        Write-InstallMessage "Removido del PATH"
+    } else {
+        Write-InstallMessage "No se encontró entrada en PATH"
+    }
+
     # Remover alias del perfil
     $profilePath = $PROFILE
     if (Test-Path $profilePath) {
         $profileContent = Get-Content $profilePath -Raw
-        $profileContent = $profileContent -replace "(?m)^# Alias for nvm-windows\r?\nSet-Alias nvm.*nvm\.ps1\r?\n", ""
+
+        # Remover alias
+        $aliasPattern = "(?m)^# Alias for nvm-windows\r?\nSet-Alias nvm.*nvm\.ps1\r?\n"
+        if ($profileContent -match $aliasPattern) {
+            $profileContent = $profileContent -replace $aliasPattern, ""
+            Write-InstallMessage "Alias removido del perfil de PowerShell"
+        } else {
+            Write-InstallMessage "Alias no encontrado en el perfil"
+        }
+
+        # Remover hook de auto-switch
+        $hookPattern = "(?s)# NVM Auto-Switch Hook.*?Nvm-AutoSwitch.*?}\r?\n\r?\n# Ejecutar auto-switch.*?\r?\n}"
+        if ($profileContent -match $hookPattern) {
+            $profileContent = $profileContent -replace $hookPattern, ""
+            Write-InstallMessage "Hook de auto-switch removido del perfil"
+        }
+
         $profileContent | Out-File -FilePath $profilePath -Encoding UTF8 -Force
-        Write-InstallMessage "Alias removido del perfil de PowerShell"
     }
 
-    # Remover del PATH
-    $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
-    $currentBin = "$NvmDir\current\bin"
-    $escapedBin = [regex]::Escape($currentBin)
-    $newPath = $currentPath -replace ";$escapedBin", "" -replace "$escapedBin;", ""
-    [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
-    Write-InstallMessage "Removido del PATH"
-
-    # Preguntar si eliminar versiones instaladas
-    $deleteVersions = Read-Host "¿Eliminar todas las versiones instaladas de Node.js? (s/n)"
-    if ($deleteVersions -eq "s" -or $deleteVersions -eq "S") {
+    # Eliminar archivos/directorios según la selección del usuario
+    if ($shouldDeleteVersions) {
         if (Test-Path $NvmDir) {
             Remove-Item -Path $NvmDir -Recurse -Force
             Write-InstallMessage "Directorio de nvm eliminado completamente"

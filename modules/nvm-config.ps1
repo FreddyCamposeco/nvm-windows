@@ -1,7 +1,14 @@
 # nvm-config.ps1 - Configuración y variables globales de NVM
 
 # Configuración principal
-$NVM_DIR = "$env:USERPROFILE\.nvm"
+# Usar NVM_DIR del entorno si está configurado, sino usar valor por defecto
+if ($env:NVM_DIR) {
+    $NVM_DIR = $env:NVM_DIR
+} else {
+    $NVM_DIR = "$env:USERPROFILE\.nvm"
+    # Sincronizar con variable de entorno para consistencia
+    $env:NVM_DIR = $NVM_DIR
+}
 $NODE_MIRROR = "https://nodejs.org/dist"
 $ARCH = if ($env:PROCESSOR_ARCHITECTURE -eq "AMD64") { "x64" } else { "x86" }
 
