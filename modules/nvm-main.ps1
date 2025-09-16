@@ -2,31 +2,31 @@
 
 # Función para verificar la instalación de NVM
 function Test-NvmInstallation {
-    Write-Output "Verificando instalación de nvm-windows..."
+    Format-NvmSectionHeader -Title "Verificando instalación de nvm-windows" -Level 1
 
     # Verificar directorio NVM
     if (!(Test-Path $NVM_DIR)) {
         Write-NvmError "Directorio NVM no existe: $NVM_DIR"
         return
     }
-    Write-Output "✓ NVM_DIR existe: $NVM_DIR"
+    Format-NvmInfoMessage -Message "NVM_DIR existe: $NVM_DIR" -Type "success"
 
     # Verificar versiones instaladas
     $installedVersions = Get-InstalledVersionsFromCache
     if ($installedVersions.Count -gt 0) {
-        Write-Output "✓ Versiones instaladas: $($installedVersions -join ', ')"
+        Format-NvmInfoMessage -Message "Versiones instaladas: $($installedVersions -join ', ')" -Type "success"
     }
     else {
-        Write-Output "! No hay versiones instaladas"
+        Format-NvmInfoMessage -Message "No hay versiones instaladas" -Type "warning"
     }
 
     # Verificar versión actual
     $currentVersion = Get-NvmCurrentVersion
     if ($currentVersion) {
-        Write-Output "✓ Versión actual: $currentVersion"
+        Format-NvmInfoMessage -Message "Versión actual: $currentVersion" -Type "success"
     }
     else {
-        Write-Output "! No hay versión activa"
+        Format-NvmInfoMessage -Message "No hay versión activa" -Type "warning"
     }
 
     # Verificar enlaces simbólicos
@@ -34,26 +34,43 @@ function Test-NvmInstallation {
     if (Test-Path $currentDir) {
         $symlinks = Get-ChildItem -Path $currentDir | Where-Object { $_.LinkType -eq "SymbolicLink" }
         if ($symlinks.Count -gt 0) {
-            Write-Output "✓ Enlaces simbólicos creados: $($symlinks.Count) archivos"
+            Format-NvmInfoMessage -Message "Enlaces simbólicos creados: $($symlinks.Count) archivos" -Type "success"
         }
         else {
-            Write-Output "! No hay enlaces simbólicos en $currentDir"
+            Format-NvmInfoMessage -Message "No hay enlaces simbólicos en $currentDir" -Type "warning"
         }
     }
     else {
-        Write-Output "! Directorio current no existe"
+        Format-NvmInfoMessage -Message "Directorio current no existe" -Type "warning"
     }
 
     # Verificar conectividad
     try {
         $testResponse = Invoke-WebRequest -Uri "https://nodejs.org" -Method Head -TimeoutSec 5 -ErrorAction Stop
-        Write-Output "✓ Conectividad a nodejs.org: OK"
+        Format-NvmInfoMessage -Message "Conectividad a nodejs.org: OK" -Type "success"
     }
     catch {
-        Write-Output "! No se puede conectar a nodejs.org"
+        Format-NvmInfoMessage -Message "No se puede conectar a nodejs.org" -Type "error"
     }
 
-    Write-Output "Verificación completada"
+    Format-NvmInfoMessage -Message "Verificación completada" -Type "success"
+}
+
+# Función para mostrar estadísticas del sistema NVM
+function Show-NvmStats {
+    $installedVersions = Get-InstalledVersionsFromCache
+    $currentVersion = Get-NvmCurrentVersion
+    $remoteVersions = Get-NvmVersionsWithCache
+
+    $stats = @{
+        "Versión actual" = $currentVersion ? $currentVersion : "Ninguna"
+        "Versiones instaladas" = $installedVersions.Count
+        "Versiones LTS disponibles" = ($remoteVersions | Where-Object { $_.lts }).Count
+        "Total versiones remotas" = $remoteVersions.Count
+        "Directorio NVM" = $NVM_DIR
+    }
+
+    Format-NvmStats -Stats $stats -Title "Estadísticas del Sistema NVM"
 }
 
 # Función para migrar instalación
@@ -138,12 +155,12 @@ function Update-NvmSelf {
 
 # Función para limpiar versiones innecesarias
 function Clean-NvmVersions {
-    Write-Host "🧹 Analizando versiones instaladas..." -ForegroundColor Cyan
+    Format-NvmProgress -Message "Analizando versiones instaladas..."
 
     # Obtener versiones instaladas
     $installedVersions = Get-InstalledVersionsFromCache
     if ($installedVersions.Count -eq 0) {
-        Write-Host "ℹ️ No hay versiones instaladas para limpiar" -ForegroundColor Yellow
+        Format-NvmInfoMessage -Message "No hay versiones instaladas para limpiar" -Type "info"
         return
     }
 
@@ -153,7 +170,7 @@ function Clean-NvmVersions {
 
     if ($currentVersion) {
         $versionsToKeep += $currentVersion
-        Write-Host "✓ Manteniendo versión actual: $currentVersion" -ForegroundColor Green
+        Format-NvmInfoMessage -Message "Manteniendo versión actual: $currentVersion" -Type "info"
     }
 
     # Obtener versiones LTS instaladas
@@ -169,26 +186,26 @@ function Clean-NvmVersions {
     }
 
     if ($installedLtsVersions.Count -gt 0) {
-        Write-Host "✓ Manteniendo versiones LTS: $($installedLtsVersions -join ', ')" -ForegroundColor Green
+        Format-NvmInfoMessage -Message "Manteniendo versiones LTS: $($installedLtsVersions -join ', ')" -Type "info"
     }
 
     # Identificar versiones a eliminar
     $versionsToRemove = $installedVersions | Where-Object { $_ -notin $versionsToKeep }
 
     if ($versionsToRemove.Count -eq 0) {
-        Write-Host "ℹ️ No hay versiones innecesarias para eliminar" -ForegroundColor Yellow
+        Format-NvmInfoMessage -Message "No hay versiones innecesarias para eliminar" -Type "info"
         return
     }
 
-    Write-Host "`n🗑️ Versiones que serán eliminadas:" -ForegroundColor Red
+    Format-NvmSectionHeader -Title "Versiones que serán eliminadas" -Level 2
     foreach ($version in $versionsToRemove) {
-        Write-Host "  - $version" -ForegroundColor Red
+        Write-NvmColoredText "  - $version" "r"
     }
 
     # Pedir confirmación
     $confirmation = Read-Host "`n¿Desea continuar con la eliminación? (y/N)"
     if ($confirmation -notmatch "^[yY]([eE][sS])?$") {
-        Write-Host "Operación cancelada" -ForegroundColor Yellow
+        Format-NvmInfoMessage -Message "Operación cancelada" -Type "warning"
         return
     }
 
@@ -198,7 +215,7 @@ function Clean-NvmVersions {
         $versionPath = "$NVM_DIR\$version"
         try {
             Remove-Item -Path $versionPath -Recurse -Force -ErrorAction Stop
-            Write-Host "✓ Eliminada: $version" -ForegroundColor Green
+            Format-NvmInfoMessage -Message "Eliminada: $version" -Type "success"
             $removedCount++
         }
         catch {
@@ -209,7 +226,7 @@ function Clean-NvmVersions {
     # Limpiar cache
     Update-NvmVersionCache
 
-    Write-Host "`n✅ Limpieza completada: $removedCount versiones eliminadas" -ForegroundColor Green
+    Format-NvmInfoMessage -Message "Limpieza completada: $removedCount versiones eliminadas" -Type "success"
 }
 
 # Función principal que maneja los comandos
@@ -293,6 +310,9 @@ function Invoke-NvmMain {
             }
             "doctor" {
                 Test-NvmInstallation
+            }
+            "stats" {
+                Show-NvmStats
             }
             "migrate" {
                 Migrate-ToSymlinks

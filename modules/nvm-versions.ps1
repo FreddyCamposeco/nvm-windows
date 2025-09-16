@@ -415,73 +415,24 @@ function Show-NvmVersions {
     $systemVersion = Get-NvmSystemVersion
     if ($systemVersion) {
         $normalizedSystemVersion = Normalize-Version $systemVersion
-        $isInstalled = $true  # System version is always "installed" in system
-        $indicator = if ($currentVersion -eq $normalizedSystemVersion) { "▶ " } else { " " }
-        $label = "system:"
-        $padding = " " * (14 - $label.Length)
-        $formattedVersion = Format-Version $systemVersion
-        $lineContent = "$indicator $label$padding$formattedVersion"
-        $spacesNeeded = $totalWidth - $lineContent.Length
-        $finalSpaces = " " * [Math]::Max(0, $spacesNeeded)
+        $isInstalled = $true  # System version is siempre "instalada" en el sistema
+        $isCurrent = $currentVersion -eq $normalizedSystemVersion
 
-        # Color indicator
-        if ($currentVersion -eq $normalizedSystemVersion) {
-            Write-NvmColoredText "▶ " "G" -NoNewline
-        }
-        else {
-            Write-Host " " -NoNewline
-        }
-        Write-NvmColoredText " $label$padding" "y" -NoNewline  # Amarillo para sistema
-        Write-NvmColoredText "$formattedVersion" "y" -NoNewline
-        Write-Host "$finalSpaces" -NoNewline
-        Write-NvmColoredText "✓" "M"
+        Format-NvmVersionLine -Type 'system' -Label 'system:' -Version $systemVersion -IsInstalled $isInstalled -IsCurrent $isCurrent -Compact:$Compact
     }
 
     # Show global version (always shown with →)
     $globalVersion = $defaultVersion
     if ($globalVersion) {
-        $label = "global:"
-        $padding = " " * (14 - $label.Length)  # Fixed padding for labels
-        $formattedVersion = Format-Version $globalVersion
-        $lineContent = "→ $label$padding$formattedVersion"
-        $spacesNeeded = $totalWidth - $lineContent.Length
-        $finalSpaces = " " * [Math]::Max(0, $spacesNeeded)
-
-        # Color output: → in cyan, label in gray, version in cyan
-        Write-NvmColoredText "→" "c" -NoNewline
-        Write-NvmColoredText " $label$padding" "e" -NoNewline
-        Write-NvmColoredText "$formattedVersion" "c" -NoNewline
-        Write-Host "$finalSpaces "
+        Format-NvmVersionLine -Type 'global' -Label 'global:' -Version $globalVersion -IsInstalled $false -IsCurrent $false -Compact:$Compact
     }
 
     # Show latest version
     if ($latestVersion) {
         $isInstalled = $installedVersions -contains $latestVersion
         $isCurrent = $currentVersion -eq $latestVersion
-        $label = "latest:"
-        $padding = " " * (14 - $label.Length)
-        $formattedVersion = Format-Version $latestVersion
-        $indicator = if ($isCurrent) { "▶ " } else { "  " }
-        $lineContent = "$indicator $label$padding$formattedVersion"
-        $spacesNeeded = $totalWidth - $lineContent.Length
-        $finalSpaces = " " * [Math]::Max(0, $spacesNeeded)
 
-        # Color indicator
-        if ($isCurrent) {
-            Write-NvmColoredText "▶ " "G" -NoNewline
-        }
-        else {
-            Write-Host "  " -NoNewline
-        }
-        Write-NvmColoredText "$label$padding" "e" -NoNewline
-        Write-NvmColoredText "$formattedVersion" "c" -NoNewline  # Cyan for latest
-        Write-Host "$finalSpaces" -NoNewline
-        if ($isInstalled) {
-            Write-NvmColoredText "✓" "G"
-        }
-        else {
-            Write-Host " "
-        }
+        Format-NvmVersionLine -Type 'latest' -Label 'latest:' -Version $latestVersion -IsInstalled $isInstalled -IsCurrent $isCurrent -Compact:$Compact
     }
 
     # LTS versions
@@ -490,30 +441,9 @@ function Show-NvmVersions {
         $isInstalled = $installedVersions -contains $normalizedLtsVersion
         $isCurrent = $currentVersion -eq $normalizedLtsVersion
         $name = $lts.lts.ToLower()
-        $label = "lts/$name`:" 
-        $padding = " " * (14 - $label.Length)
-        $formattedVersion = Format-Version $lts.version
-        $indicator = if ($isCurrent) { "▶ " } else { "  " }
-        $lineContent = "$indicator $label$padding$formattedVersion"
-        $spacesNeeded = $totalWidth - $lineContent.Length
-        $finalSpaces = " " * [Math]::Max(0, $spacesNeeded)
+        $label = "lts/$name`:"
 
-        # Color indicator
-        if ($isCurrent) {
-            Write-NvmColoredText "▶ " "G" -NoNewline
-        }
-        else {
-            Write-Host "  " -NoNewline
-        }
-        Write-NvmColoredText "$label$padding" "y" -NoNewline  # Yellow for LTS labels
-        Write-NvmColoredText "$formattedVersion" "e" -NoNewline  # Gray for all LTS versions (consistent with HTML)
-        Write-Host "$finalSpaces" -NoNewline
-        if ($isInstalled) {
-            Write-NvmColoredText "✓" "G"
-        }
-        else {
-            Write-Host " "
-        }
+        Format-NvmVersionLine -Type 'lts' -Label $label -Version $lts.version -IsInstalled $isInstalled -IsCurrent $isCurrent -Compact:$Compact
     }
 
     # .nvmrc version (if exists)
@@ -529,30 +459,7 @@ function Show-NvmVersions {
             $isCurrent = $false
         }
 
-        $label = ".nvmrc:"
-        $padding = " " * (15 - $label.Length)  # Extra space for .nvmrc since indicator is 1 char
-        $formattedVersion = Format-Version $nvmrcVersion
-        $indicator = if ($isCurrent) { "▶" } else { "ϟ" }
-        $lineContent = "$indicator$label$padding$formattedVersion"
-        $spacesNeeded = $totalWidth - $lineContent.Length
-        $finalSpaces = " " * [Math]::Max(0, $spacesNeeded)
-
-        # Color indicator
-        if ($isCurrent) {
-            Write-NvmColoredText "▶" "Y" -NoNewline
-        }
-        else {
-            Write-NvmColoredText "ϟ" "Y" -NoNewline
-        }
-        Write-NvmColoredText "$label$padding" "m" -NoNewline  # Purple for .nvmrc label
-        Write-NvmColoredText "$formattedVersion" "m" -NoNewline  # Purple for .nvmrc version
-        Write-Host "$finalSpaces" -NoNewline
-        if ($isInstalled) {
-            Write-NvmColoredText "✓" "G"  # Green checkmark if installed
-        }
-        else {
-            Write-NvmColoredText "✗" "R"  # Red X if not installed
-        }
+        Format-NvmVersionLine -Type 'nvmrc' -Label '.nvmrc:' -Version $nvmrcVersion -IsInstalled $isInstalled -IsCurrent $isCurrent -Compact:$Compact
     }
 
     # Non-LTS versions - show only installed non-LTS versions
@@ -571,40 +478,185 @@ function Show-NvmVersions {
         Write-Host "Installed (non-LTS):"
         foreach ($versionInfo in $installedNonLtsVersions) {
             $normalizedVersion = Normalize-Version $versionInfo.Version
-            $indicator = if ($currentVersion -eq $normalizedVersion) { 
-                "▶" 
-            }
-            elseif ($nvmrcVersion -and $normalizedVersion -eq (Normalize-Version $nvmrcVersion)) {
-                "ϟ"
-            }
-            else { 
-                " " 
-            }
-            $label = "v$($versionInfo.Major).x`:" 
-            $padding = " " * (14 - $label.Length)
-            $formattedVersion = Format-Version $versionInfo.Version
-            $lineContent = "$indicator $label$padding$formattedVersion"
-            $spacesNeeded = $totalWidth - $lineContent.Length - 1  # Always show ✓ for installed versions
-            $finalSpaces = " " * [Math]::Max(1, $spacesNeeded)
+            $isCurrent = $currentVersion -eq $normalizedVersion
+            $label = "v$($versionInfo.Major).x`:"
 
-            # Color indicator
-            if ($currentVersion -eq $normalizedVersion) {
-                Write-NvmColoredText "▶" "G" -NoNewline
-            }
-            elseif ($nvmrcVersion -and $normalizedVersion -eq (Normalize-Version $nvmrcVersion)) {
-                Write-NvmColoredText "ϟ" "Y" -NoNewline
-            }
-            else {
-                Write-Host " " -NoNewline
-            }
-            Write-NvmColoredText " $label$padding" "e" -NoNewline
-            Write-NvmColoredText "$formattedVersion" "e" -NoNewline
-            Write-Host "$finalSpaces" -NoNewline
-            Write-NvmColoredText "✓" "M"
+            Format-NvmVersionLine -Type 'non-lts' -Label $label -Version $versionInfo.Version -IsInstalled $true -IsCurrent $isCurrent -Compact:$Compact
         }
     }
 
     Write-Host ""
+}
+
+# Función para formatear mensajes informativos
+function Format-NvmInfoMessage {
+    <#
+    .SYNOPSIS
+        Formats informational messages with consistent styling
+    .PARAMETER Message
+        The message to format
+    .PARAMETER Type
+        Type of message: 'info', 'success', 'warning', 'error'
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Message,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('info', 'success', 'warning', 'error')]
+        [string]$Type = 'info'
+    )
+
+    switch ($Type) {
+        'info' {
+            Write-NvmColoredText "ℹ️ $Message" "c"
+        }
+        'success' {
+            Write-NvmColoredText "✅ $Message" "G"
+        }
+        'warning' {
+            Write-NvmColoredText "⚠️ $Message" "y"
+        }
+        'error' {
+            Write-NvmColoredText "❌ $Message" "r"
+        }
+    }
+}
+
+# Función para formatear encabezados de sección
+function Format-NvmSectionHeader {
+    <#
+    .SYNOPSIS
+        Formats section headers with consistent styling
+    .PARAMETER Title
+        The section title
+    .PARAMETER Level
+        Header level (1-3, affects styling)
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Title,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateRange(1, 3)]
+        [int]$Level = 1
+    )
+
+    Write-Host ""
+    switch ($Level) {
+        1 {
+            Write-NvmColoredText "═══ $Title ═══" "c"
+        }
+        2 {
+            Write-NvmColoredText "── $Title ──" "y"
+        }
+        3 {
+            Write-NvmColoredText "· $Title ·" "e"
+        }
+    }
+    Write-Host ""
+}
+
+# Función para mostrar progreso con formato
+function Format-NvmProgress {
+    <#
+    .SYNOPSIS
+        Shows progress messages with consistent formatting
+    .PARAMETER Message
+        The progress message
+    .PARAMETER Step
+        Current step number
+    .PARAMETER Total
+        Total number of steps
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Message,
+
+        [Parameter(Mandatory = $false)]
+        [int]$Step,
+
+        [Parameter(Mandatory = $false)]
+        [int]$Total
+    )
+
+    if ($Step -and $Total) {
+        $progress = "[$Step/$Total]"
+        Write-NvmColoredText "$progress $Message" "b"
+    } else {
+        Write-NvmColoredText "⏳ $Message" "b"
+    }
+}
+
+# Función para mostrar estadísticas formateadas
+function Format-NvmStats {
+    <#
+    .SYNOPSIS
+        Shows statistics in a formatted table
+    .PARAMETER Stats
+        Hashtable with statistic name-value pairs
+    .PARAMETER Title
+        Optional title for the stats section
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Stats,
+
+        [Parameter(Mandatory = $false)]
+        [string]$Title
+    )
+
+    if ($Title) {
+        Format-NvmSectionHeader -Title $Title -Level 3
+    }
+
+    $maxKeyLength = ($Stats.Keys | Measure-Object -Property Length -Maximum).Maximum
+
+    foreach ($key in $Stats.Keys | Sort-Object) {
+        $padding = " " * ($maxKeyLength - $key.Length)
+        Write-NvmColoredText "  $key$padding : " "e" -NoNewline
+        Write-NvmColoredText "$($Stats[$key])" "c"
+    }
+}
+
+# Función para mostrar versiones en formato de lista simple
+function Format-NvmSimpleList {
+    <#
+    .SYNOPSIS
+        Shows a simple list of versions without complex formatting
+    .PARAMETER Versions
+        Array of version strings
+    .PARAMETER Title
+        Optional title for the list
+    .PARAMETER Highlight
+        Version to highlight (shows with different color)
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$Versions,
+
+        [Parameter(Mandatory = $false)]
+        [string]$Title,
+
+        [Parameter(Mandatory = $false)]
+        [string]$Highlight
+    )
+
+    if ($Title) {
+        Write-Host "$Title`:"
+    }
+
+    foreach ($version in $Versions) {
+        if ($Highlight -and $version -eq $Highlight) {
+            Write-NvmColoredText "  → $version" "G"
+        } else {
+            Write-Host "    $version"
+        }
+    }
+
+    if ($Versions.Count -eq 0) {
+        Write-NvmColoredText "  (ninguna)" "e"
+    }
 }
 
 # Función para mostrar versiones remotas
@@ -615,5 +667,173 @@ function Show-RemoteVersions {
     }
     catch {
         Write-NvmError "Failed to fetch remote versions: $($_.Exception.Message)"
+    }
+}
+
+function Format-NvmVersionLine {
+    <#
+    .SYNOPSIS
+        Formats a single version line for nvm ls output
+    .DESCRIPTION
+        Creates a consistently formatted line with proper colors and alignment
+    .PARAMETER Type
+        Type of version line: 'system', 'global', 'latest', 'lts', 'nvmrc', 'non-lts'
+    .PARAMETER Label
+        The label text (e.g., 'latest:', 'lts/iron:')
+    .PARAMETER Version
+        The version string
+    .PARAMETER IsInstalled
+        Whether the version is installed
+    .PARAMETER IsCurrent
+        Whether this is the currently active version
+    .PARAMETER LtsName
+        For LTS versions, the LTS name (e.g., 'iron', 'jod')
+    .PARAMETER Compact
+        Whether to use compact formatting
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('system', 'global', 'latest', 'lts', 'nvmrc', 'non-lts')]
+        [string]$Type,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Label,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Version,
+
+        [Parameter(Mandatory = $false)]
+        [bool]$IsInstalled = $false,
+
+        [Parameter(Mandatory = $false)]
+        [bool]$IsCurrent = $false,
+
+        [Parameter(Mandatory = $false)]
+        [string]$LtsName = "",
+
+        [Parameter(Mandatory = $false)]
+        [switch]$Compact
+    )
+
+    # Define total width based on compact mode
+    $totalWidth = $Compact ? 20 : 27
+
+    # Format the version
+    $formattedVersion = Format-Version $Version
+
+    # Determine indicator and colors based on type
+    switch ($Type) {
+        'system' {
+            $indicator = if ($IsCurrent) { "▶ " } else { " " }
+            $labelColor = "y"  # Yellow for system
+            $versionColor = "y"  # Yellow for system
+            $labelPadding = 14
+        }
+        'global' {
+            $indicator = "→"
+            $labelColor = "e"  # Gray for global label
+            $versionColor = "c"  # Cyan for global version
+            $labelPadding = 14
+        }
+        'latest' {
+            $indicator = if ($IsCurrent) { "▶ " } else { "  " }
+            $labelColor = "e"  # Gray for latest label
+            $versionColor = "c"  # Cyan for latest version
+            $labelPadding = 14
+        }
+        'lts' {
+            $indicator = if ($IsCurrent) { "▶ " } else { "  " }
+            $labelColor = "y"  # Yellow for LTS labels
+            $versionColor = "e"  # Gray for LTS versions
+            $labelPadding = 14
+        }
+        'nvmrc' {
+            $indicator = if ($IsCurrent) { "▶" } else { "ϟ" }
+            $labelColor = "m"  # Purple for .nvmrc
+            $versionColor = "m"  # Purple for .nvmrc
+            $labelPadding = 15  # Extra space since indicator is 1 char
+        }
+        'non-lts' {
+            $indicator = if ($IsCurrent) { "▶ " } else { "  " }
+            $labelColor = "e"  # Gray for non-LTS
+            $versionColor = "e"  # Gray for non-LTS
+            $labelPadding = 14
+        }
+    }
+
+    # Calculate padding
+    $padding = " " * ($labelPadding - $Label.Length)
+
+    # Build the line content for width calculation
+    $lineContent = if ($Type -eq 'global') {
+        "$indicator $Label$padding$formattedVersion"
+    } elseif ($Type -eq 'nvmrc') {
+        "$indicator$Label$padding$formattedVersion"
+    } else {
+        "$indicator $Label$padding$formattedVersion"
+    }
+
+    # Calculate spaces needed for alignment
+    $spacesNeeded = $totalWidth - $lineContent.Length
+    $finalSpaces = " " * [Math]::Max(0, $spacesNeeded)
+
+    # Output the formatted line with colors
+
+    # Indicator
+    switch ($Type) {
+        'system' {
+            if ($IsCurrent) {
+                Write-NvmColoredText "▶ " "G" -NoNewline
+            } else {
+                Write-Host " " -NoNewline
+            }
+        }
+        'global' {
+            Write-NvmColoredText "→" "c" -NoNewline
+        }
+        'latest' {
+            if ($IsCurrent) {
+                Write-NvmColoredText "▶ " "G" -NoNewline
+            } else {
+                Write-Host "  " -NoNewline
+            }
+        }
+        'lts' {
+            if ($IsCurrent) {
+                Write-NvmColoredText "▶ " "G" -NoNewline
+            } else {
+                Write-Host "  " -NoNewline
+            }
+        }
+        'nvmrc' {
+            if ($IsCurrent) {
+                Write-NvmColoredText "▶" "Y" -NoNewline
+            } else {
+                Write-NvmColoredText "ϟ" "Y" -NoNewline
+            }
+        }
+        'non-lts' {
+            if ($IsCurrent) {
+                Write-NvmColoredText "▶ " "G" -NoNewline
+            } else {
+                Write-Host "  " -NoNewline
+            }
+        }
+    }
+
+    # Label
+    Write-NvmColoredText "$Label$padding" $labelColor -NoNewline
+
+    # Version
+    Write-NvmColoredText "$formattedVersion" $versionColor -NoNewline
+
+    # Alignment spaces
+    Write-Host "$finalSpaces" -NoNewline
+
+    # Installation indicator
+    if ($IsInstalled) {
+        Write-NvmColoredText "✓" "G"
+    } else {
+        Write-Host " "
     }
 }
