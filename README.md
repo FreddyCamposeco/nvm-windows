@@ -9,6 +9,7 @@
 - 🏷️ **Sistema de Alias Avanzado**: Soporte para `lts`, `latest` y nombres de LTS
 - 🔍 **Diagnóstico Integrado**: Comando `doctor` para verificar instalación
 - 📄 **Soporte para .nvmrc**: Detección automática de versiones por proyecto
+- 🔄 **Auto-cambio con .nvmrc**: Cambio automático al cambiar de directorio (como nvm.sh)
 - 🎨 **Colores Personalizables**: Esquemas de color completamente configurables
 - 🚀 **Instalación Automática**: Setup con un solo comando + instalación opcional de LTS
 - 🔄 **Auto-actualización**: Comando `self-update` para mantener al día
@@ -35,6 +36,7 @@ Una adaptación completa de [nvm](https://github.com/nvm-sh/nvm) para Windows n
 - 🏷️ **Sistema de Alias Avanzado**: Soporte para `lts`, `latest` y nombres de LTS
 - 🔍 **Diagnóstico Integrado**: Comando `doctor` para verificar instalación
 - 📄 **Soporte para .nvmrc**: Detección automática de versiones por proyecto
+- 🔄 **Auto-cambio con .nvmrc**: Cambio automático al cambiar de directorio (como nvm.sh)
 - 🎨 **Colores Personalizables**: Esquemas de color completamente configurables
 - 🚀 **Instalación Automática**: Setup con un solo comando
 - 🔄 **Auto-actualización**: Comando `self-update` para mantener al día
@@ -208,6 +210,8 @@ nvm cleanup
 | `nvm lsu`                | Fuerza actualización del cache de versiones | `nvm lsu`             |
 | `nvm ls-remote`          | Lista versiones disponibles para descargar | `nvm ls-remote`       |
 | `nvm current`           | Muestra versión actual               | `nvm current`         |
+| `nvm auto on/off/status`| Controla auto-cambio con .nvmrc      | `nvm auto on`         |
+| `nvm auto setup`        | Instala hook de auto-cambio          | `nvm auto setup`      |
 | `nvm uninstall <versión> [--force]` | Desinstala una versión (usa --force para versión activa) | `nvm uninstall 20.19.5 --force` |
 
 ### Sistema de Alias
@@ -501,6 +505,15 @@ node --version  # v24.x.x
 # Usar .nvmrc en proyectos
 echo "20.19.5" > .nvmrc
 nvm use  # Detecta automáticamente
+
+# Auto-cambio automático (como nvm.sh)
+nvm auto on      # Habilita auto-cambio
+nvm auto setup   # Instala hook en perfil
+nvm auto status  # Verifica estado
+
+# Ahora al cambiar de directorio se cambia automáticamente
+cd proyecto-con-nvmrc/
+# nvm: Cambiando a v20.19.5 (.nvmrc)
 
 # Ver todas las versiones
 nvm ls
