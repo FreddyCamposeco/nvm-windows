@@ -103,6 +103,14 @@ function Migrate-NvmInstallation {
     }
 }
 
+# Función para mostrar la versión de NVM
+function Show-NvmVersion {
+    Write-Output "nvm-windows $NVM_VERSION"
+    Write-Output "Node Version Manager para Windows (PowerShell)"
+    Write-Output ""
+    Write-Output "Repositorio: https://github.com/freddyCamposeco/nvm-windows"
+}
+
 # Función para auto-actualizar NVM
 function Update-NvmSelf {
     Write-Output "Actualizando nvm-windows..."
@@ -129,11 +137,16 @@ function Update-NvmSelf {
                 Write-Output "Tamaño: ${fileSize}MB"
 
                 # Descargar con progreso
+                Write-Progress -Activity "Actualizando nvm-windows" -Status "Descargando actualización..." -PercentComplete 0
                 $ProgressPreference = 'Continue'
                 Invoke-WebRequest -Uri $downloadUrl -OutFile $tempZip -ErrorAction Stop
+                Write-Progress -Activity "Actualizando nvm-windows" -Status "Descarga completada" -PercentComplete 50 -Completed
                 
                 Write-Output "Extrayendo actualización..."
+                Write-Progress -Activity "Actualizando nvm-windows" -Status "Extrayendo archivos..." -PercentComplete 75
                 Expand-Archive -Path $tempZip -DestinationPath $tempDir -Force
+                Write-Progress -Activity "Actualizando nvm-windows" -Status "Instalando..." -PercentComplete 90
+                Write-Progress -Activity "Actualizando nvm-windows" -Status "Completado" -PercentComplete 100 -Completed
 
                 Write-Output "Instalando actualización..."
 
@@ -258,6 +271,9 @@ function Invoke-NvmMain {
             "help" {
                 Show-Help
             }
+            "version" {
+                Show-NvmVersion
+            }
             "install" {
                 Install-Node $Version
             }
@@ -353,6 +369,16 @@ function Invoke-NvmMain {
                 Write-NvmError "Unknown command: $Command"
                 Write-Host "Use 'nvm help' to see available commands"
             }
+        }
+    }
+    elseif ($Args -and $Args.Length -gt 0) {
+        # Verificar si es una opción especial no reconocida como comando
+        $firstArg = $Args[0]
+        if ($firstArg -eq "--version" -or $firstArg -eq "-v") {
+            Show-NvmVersion
+        }
+        else {
+            Show-Help
         }
     }
     else {

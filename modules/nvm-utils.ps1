@@ -8,7 +8,7 @@ function Write-NvmError {
 
 # Función para mostrar ayuda
 function Show-Help {
-    Write-Output "Uso: nvm <comando> [versión]"
+    Write-Output "Uso: nvm <comando> [versión] | nvm [--version | -v | version]"
     Write-Output "Comandos:"
     Write-Output "  install <versión>    Instala una versión específica de Node.js"
     Write-Output "  uninstall <versión> [--force]  Desinstala una versión específica de Node.js"
@@ -29,6 +29,7 @@ function Show-Help {
     Write-Output "  set-colors <colores>  Establece el esquema de colores (5 caracteres)"
     Write-Output "  set-default <versión> Establece versión por defecto para nuevas sesiones"
     Write-Output "  help                 Muestra esta ayuda"
+    Write-Output "  version, -v, --version  Muestra la versión de nvm-windows"
     Write-Output ""
     Write-Output "Códigos de colores disponibles:"
     Write-Output "  r = rojo,   g = verde,   b = azul,   y = amarillo"
@@ -106,22 +107,39 @@ function Write-NvmColoredText {
 function Parse-NvmArguments {
     param([string[]]$Arguments)
 
-    $Command = if ($Arguments -and $Arguments.Length -gt 0) { $Arguments[0] } else { $null }
+    $Command = $null
+    $Version = $null
+    $RemainingArgs = @()
 
-    if ($Arguments -and $Arguments.Length -gt 1) {
-        # Si el segundo argumento parece una opción (empieza con -), no es una versión
-        if ($Arguments[1] -like "-*") {
-            $Version = $null
-            $RemainingArgs = $Arguments[1..($Arguments.Length - 1)]
+    if ($Arguments -and $Arguments.Length -gt 0) {
+        $firstArg = $Arguments[0]
+        
+        # Verificar si es una opción de versión
+        if ($firstArg -eq "--version" -or $firstArg -eq "-v" -or $firstArg -eq "version") {
+            $Command = "version"
+        }
+        elseif ($firstArg -like "-*") {
+            # Otras opciones globales podrían ir aquí
+            $Command = $null
         }
         else {
-            $Version = $Arguments[1]
-            $RemainingArgs = if ($Arguments.Length -gt 2) { $Arguments[2..($Arguments.Length - 1)] } else { @() }
+            $Command = $firstArg
         }
-    }
-    else {
-        $Version = $null
-        $RemainingArgs = @()
+
+        if ($Command -and $Command -ne "version" -and $Arguments.Length -gt 1) {
+            # Si el segundo argumento parece una opción (empieza con -), no es una versión
+            if ($Arguments[1] -like "-*") {
+                $Version = $null
+                $RemainingArgs = $Arguments[1..($Arguments.Length - 1)]
+            }
+            else {
+                $Version = $Arguments[1]
+                $RemainingArgs = if ($Arguments.Length -gt 2) { $Arguments[2..($Arguments.Length - 1)] } else { @() }
+            }
+        }
+        elseif ($Command -eq "version") {
+            $RemainingArgs = if ($Arguments.Length -gt 1) { $Arguments[1..($Arguments.Length - 1)] } else { @() }
+        }
     }
 
     return @{

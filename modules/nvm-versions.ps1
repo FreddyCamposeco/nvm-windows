@@ -65,35 +65,33 @@ function Get-NvmVersionsWithCache {
         }
     }
 
-    # Obtener versiones desde la web
+    # Obtener versiones desde la web (sin verificación de archivos cuando no hay caché)
     try {
+        Write-Host "Creando caché de versiones..." -ForegroundColor Yellow
+        Write-Progress -Activity "Descargando índice de versiones" -Status "Conectando a nodejs.org..." -PercentComplete 0
+        
         $response = Invoke-WebRequest -Uri "https://nodejs.org/dist/index.json" -ErrorAction Stop
+        Write-Progress -Activity "Descargando índice de versiones" -Status "Procesando datos..." -PercentComplete 50
+        
         $versions = $response.Content | ConvertFrom-Json
+        Write-Progress -Activity "Descargando índice de versiones" -Status "Completado" -PercentComplete 100 -Completed
 
-        # Filtrar solo versiones que tienen archivos para Windows
-        $versions = $versions | Where-Object {
-            $version = $_.version -replace '^v', ''
-            $url = "https://nodejs.org/dist/$($_.version)/node-$($_.version)-win-$ARCH.zip"
-            try {
-                $null = Invoke-WebRequest -Uri $url -Method Head -ErrorAction Stop -TimeoutSec 5
-                $true
-            }
-            catch {
-                $false
-            }
-        }
+        # Nota: No filtramos por archivos Windows para acelerar la creación inicial del caché
+        # Las versiones sin archivos Windows serán manejadas en el momento de instalación
 
         # Guardar en caché
         try {
             $versions | ConvertTo-Json -Depth 10 | Out-File -FilePath $cacheFile -Encoding UTF8 -Force
+            Write-Host "Caché creado exitosamente." -ForegroundColor Green
         }
         catch {
-            # Ignorar errores de guardado de caché
+            Write-Warning "No se pudo guardar el caché, pero continuando con los datos descargados."
         }
 
         return $versions
     }
     catch {
+        Write-Progress -Activity "Descargando índice de versiones" -Status "Error" -Completed
         throw "Error al obtener versiones desde nodejs.org: $($_.Exception.Message)"
     }
 }
@@ -104,8 +102,13 @@ function Update-NvmVersionCache {
 
     try {
         Write-Output "Actualizando caché de versiones..."
+        Write-Progress -Activity "Actualizando caché de versiones" -Status "Descargando índice..." -PercentComplete 0
+        
         $response = Invoke-WebRequest -Uri "https://nodejs.org/dist/index.json" -ErrorAction Stop
+        Write-Progress -Activity "Actualizando caché de versiones" -Status "Procesando datos..." -PercentComplete 25
+        
         $versions = $response.Content | ConvertFrom-Json
+        Write-Progress -Activity "Actualizando caché de versiones" -Status "Verificando archivos Windows..." -PercentComplete 50
 
         # Filtrar versiones con archivos Windows disponibles
         $filteredVersions = @()
@@ -127,17 +130,22 @@ function Update-NvmVersionCache {
 
             # Mostrar progreso cada 50 versiones
             if ($processed % 50 -eq 0) {
+                $percent = [math]::Round(($processed / $totalVersions) * 50 + 50, 0)
+                Write-Progress -Activity "Actualizando caché de versiones" -Status "Verificando archivos Windows... ($processed/$totalVersions)" -PercentComplete $percent
                 Write-Host "." -NoNewline
             }
         }
 
-        # Guardar en caché
+        Write-Progress -Activity "Actualizando caché de versiones" -Status "Guardando caché..." -PercentComplete 90
+        
+        # Guardar caché filtrado
         $filteredVersions | ConvertTo-Json -Depth 10 | Out-File -FilePath $cacheFile -Encoding UTF8 -Force
-
-        Write-Output ""
+        Write-Progress -Activity "Actualizando caché de versiones" -Status "Completado" -PercentComplete 100 -Completed
+        
         Write-Output "Caché actualizado con $($filteredVersions.Count) versiones"
     }
     catch {
+        Write-Progress -Activity "Actualizando caché de versiones" -Status "Error" -Completed
         Write-NvmError "Error al actualizar caché: $($_.Exception.Message)"
     }
 }

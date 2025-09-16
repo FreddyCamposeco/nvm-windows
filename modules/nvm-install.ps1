@@ -49,8 +49,10 @@ function Install-Node {
         }
 
         # Descargar con progreso visible
+        Write-Progress -Activity "Descargando Node.js $Version" -Status "Iniciando descarga..." -PercentComplete 0
         $ProgressPreference = 'Continue'  # Asegurar que se muestre progreso
         Invoke-WebRequest -Uri $url -OutFile $zipPath -ErrorAction Stop
+        Write-Progress -Activity "Descargando Node.js $Version" -Status "Descarga completada" -PercentComplete 100 -Completed
         
         Write-Output "Descarga completada!"
 
@@ -64,9 +66,11 @@ function Install-Node {
         Write-Output "Archivo descargado: ${downloadedMB}MB"
 
         Write-Output "Extrayendo archivos..."
+        Write-Progress -Activity "Extrayendo Node.js $Version" -Status "Extrayendo archivos..." -PercentComplete 0
         
         # Extraer directamente al directorio final
         Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force -ErrorAction Stop
+        Write-Progress -Activity "Extrayendo Node.js $Version" -Status "Extracción completada" -PercentComplete 100 -Completed
         
         Write-Output "Extracción completada!"
 

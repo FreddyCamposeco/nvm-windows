@@ -21,3 +21,6 @@ $NVM_COLORS = @{
 # Configuración de caché
 $NVM_CACHE_DURATION_MINUTES = 15
 $NVM_INSTALLED_CACHE_DURATION_MINUTES = 5
+
+# Información de versión
+$NVM_VERSION = "2.4-beta"
