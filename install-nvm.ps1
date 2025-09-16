@@ -101,16 +101,22 @@ function Install-Nvm {
     Write-InstallMessage "Instalación completada!" "success"
     Write-InstallMessage "Ejecuta: nvm doctor" "info"
 
-    # Instalar LTS automáticamente si no se especificó lo contrario
+    # Preguntar si se desea instalar Node.js LTS
     if (-not $SkipLtsInstall) {
-        Write-InstallMessage "Instalando Node.js LTS automáticamente..."
-        try {
-            $nvmScript = Join-Path $NvmDir "nvm.ps1"
-            & $nvmScript install lts 2>&1
-            Write-InstallMessage "Node.js LTS instalado!" "success"
+        $installLts = Read-Host "¿Deseas instalar Node.js LTS automáticamente? (s/n)"
+        if ($installLts -eq "s" -or $installLts -eq "S") {
+            Write-InstallMessage "Instalando Node.js LTS automáticamente..."
+            try {
+                $nvmScript = Join-Path $NvmDir "nvm.ps1"
+                & $nvmScript install lts 2>&1
+                Write-InstallMessage "Node.js LTS instalado!" "success"
+            }
+            catch {
+                Write-InstallMessage "No se pudo instalar LTS automáticamente. Instálalo manualmente con: nvm install lts" "warning"
+            }
         }
-        catch {
-            Write-InstallMessage "No se pudo instalar LTS automáticamente. Instálalo manualmente con: nvm install lts" "warning"
+        else {
+            Write-InstallMessage "Instalación de Node.js LTS omitida. Puedes instalarlo manualmente con: nvm install lts" "info"
         }
     }
 }
