@@ -715,75 +715,75 @@ function Format-NvmVersionLine {
         [switch]$Compact
     )
 
-    # Define total width based on compact mode
-    $totalWidth = $Compact ? 20 : 27
-
     # Format the version
     $formattedVersion = Format-Version $Version
 
-    # Determine indicator and colors based on type
-    switch ($Type) {
+    # Fixed column positions:
+    # Column 1: indicator
+    # Column 3: label starts (after indicator + 1 space)
+    # Column 17: version starts
+    # Column 27: check mark
+
+    # Determine indicator based on type
+    $indicator = switch ($Type) {
         'system' {
-            $indicator = if ($IsCurrent) { "▶ " } else { " " }
-            $labelColor = "y"  # Yellow for system
-            $versionColor = "y"  # Yellow for system
-            $labelPadding = 14
+            if ($IsCurrent) { "▶" } else { " " }
         }
         'global' {
-            $indicator = "→"
-            $labelColor = "e"  # Gray for global label
-            $versionColor = "c"  # Cyan for global version
-            $labelPadding = 14
+            "→"
         }
         'latest' {
-            $indicator = if ($IsCurrent) { "▶ " } else { "  " }
-            $labelColor = "e"  # Gray for latest label
-            $versionColor = "c"  # Cyan for latest version
-            $labelPadding = 14
+            if ($IsCurrent) { "▶" } else { " " }
         }
         'lts' {
-            $indicator = if ($IsCurrent) { "▶ " } else { "  " }
-            $labelColor = "y"  # Yellow for LTS labels
-            $versionColor = "e"  # Gray for LTS versions
-            $labelPadding = 14
+            if ($IsCurrent) { "▶" } else { " " }
         }
         'nvmrc' {
-            $indicator = if ($IsCurrent) { "▶" } else { "ϟ" }
-            $labelColor = "m"  # Purple for .nvmrc
-            $versionColor = "m"  # Purple for .nvmrc
-            $labelPadding = 15  # Extra space since indicator is 1 char
+            if ($IsCurrent) { "▶" } else { "ϟ" }
         }
         'non-lts' {
-            $indicator = if ($IsCurrent) { "▶ " } else { "  " }
-            $labelColor = "e"  # Gray for non-LTS
-            $versionColor = "e"  # Gray for non-LTS
-            $labelPadding = 14
+            if ($IsCurrent) { "▶" } else { " " }
         }
     }
 
-    # Calculate padding
-    $padding = " " * ($labelPadding - $Label.Length)
-
-    # Build the line content for width calculation
-    $lineContent = if ($Type -eq 'global') {
-        "$indicator $Label$padding$formattedVersion"
-    } elseif ($Type -eq 'nvmrc') {
-        "$indicator$Label$padding$formattedVersion"
-    } else {
-        "$indicator $Label$padding$formattedVersion"
+    # Determine colors based on type
+    $labelColor = switch ($Type) {
+        'system' { "y" }  # Yellow for system
+        'global' { "e" }  # Gray for global label
+        'latest' { "e" }  # Gray for latest label
+        'lts' { "y" }     # Yellow for LTS labels
+        'nvmrc' { "m" }   # Purple for .nvmrc
+        'non-lts' { "e" } # Gray for non-LTS
     }
 
-    # Calculate spaces needed for alignment
-    $spacesNeeded = $totalWidth - $lineContent.Length
-    $finalSpaces = " " * [Math]::Max(0, $spacesNeeded)
+    $versionColor = switch ($Type) {
+        'system' { "y" }  # Yellow for system
+        'global' { "c" }  # Cyan for global version
+        'latest' { "c" }  # Cyan for latest version
+        'lts' { "e" }     # Gray for LTS versions
+        'nvmrc' { "m" }   # Purple for .nvmrc
+        'non-lts' { "e" } # Gray for non-LTS
+    }
 
-    # Output the formatted line with colors
+    # Calculate spacing
+    # Label starts at column 3, so after indicator we need 1 space
+    $spaceAfterIndicator = " "
+    # Label area: columns 3-16 (14 characters max for label)
+    $maxLabelLength = 14
+    $labelPadding = " " * [Math]::Max(0, $maxLabelLength - $Label.Length)
+    # Version starts at column 17, check at column 27
+    # Space between version end and check: column 27 - (17 + version length)
+    $versionStartColumn = 17
+    $checkColumn = 27
+    $spaceAfterVersion = " " * [Math]::Max(0, $checkColumn - $versionStartColumn - $formattedVersion.Length)
 
-    # Indicator
+    # Output the formatted line with fixed column positions
+
+    # Column 1: Indicator
     switch ($Type) {
         'system' {
             if ($IsCurrent) {
-                Write-NvmColoredText "▶ " "G" -NoNewline
+                Write-NvmColoredText "▶" "G" -NoNewline
             } else {
                 Write-Host " " -NoNewline
             }
@@ -793,16 +793,16 @@ function Format-NvmVersionLine {
         }
         'latest' {
             if ($IsCurrent) {
-                Write-NvmColoredText "▶ " "G" -NoNewline
+                Write-NvmColoredText "▶" "G" -NoNewline
             } else {
-                Write-Host "  " -NoNewline
+                Write-Host " " -NoNewline
             }
         }
         'lts' {
             if ($IsCurrent) {
-                Write-NvmColoredText "▶ " "G" -NoNewline
+                Write-NvmColoredText "▶" "G" -NoNewline
             } else {
-                Write-Host "  " -NoNewline
+                Write-Host " " -NoNewline
             }
         }
         'nvmrc' {
@@ -814,23 +814,26 @@ function Format-NvmVersionLine {
         }
         'non-lts' {
             if ($IsCurrent) {
-                Write-NvmColoredText "▶ " "G" -NoNewline
+                Write-NvmColoredText "▶" "G" -NoNewline
             } else {
-                Write-Host "  " -NoNewline
+                Write-Host " " -NoNewline
             }
         }
     }
 
-    # Label
-    Write-NvmColoredText "$Label$padding" $labelColor -NoNewline
+    # Space after indicator (column 2)
+    Write-Host $spaceAfterIndicator -NoNewline
 
-    # Version
-    Write-NvmColoredText "$formattedVersion" $versionColor -NoNewline
+    # Column 3-16: Label with padding
+    Write-NvmColoredText "$Label$labelPadding" $labelColor -NoNewline
 
-    # Alignment spaces
-    Write-Host "$finalSpaces" -NoNewline
+    # Column 17+: Version
+    Write-NvmColoredText $formattedVersion $versionColor -NoNewline
 
-    # Installation indicator
+    # Space between version and check
+    Write-Host $spaceAfterVersion -NoNewline
+
+    # Column 27: Installation indicator
     if ($IsInstalled) {
         Write-NvmColoredText "✓" "G"
     } else {
