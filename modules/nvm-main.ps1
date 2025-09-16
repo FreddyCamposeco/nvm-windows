@@ -124,8 +124,18 @@ function Update-NvmSelf {
                 $tempZip = "$env:TEMP\nvm-windows-update.zip"
                 $tempDir = "$env:TEMP\nvm-windows-update"
 
+                # Mostrar información de descarga
+                $fileSize = [math]::Round($asset.size / 1MB, 2)
+                Write-Output "Tamaño: ${fileSize}MB"
+
+                # Descargar con progreso
+                $ProgressPreference = 'Continue'
                 Invoke-WebRequest -Uri $downloadUrl -OutFile $tempZip -ErrorAction Stop
+                
+                Write-Output "Extrayendo actualización..."
                 Expand-Archive -Path $tempZip -DestinationPath $tempDir -Force
+
+                Write-Output "Instalando actualización..."
 
                 # Copiar archivos actualizados (excepto directorios de versiones)
                 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path

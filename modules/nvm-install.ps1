@@ -37,16 +37,38 @@ function Install-Node {
 
     try {
         Write-Output "Descargando Node.js $Version..."
-        Invoke-WebRequest -Uri $url -OutFile $zipPath -ErrorAction Stop
-
-        Write-Output "Extrayendo..."
-        # Limpiar directorio de destino si existe
-        if (Test-Path $extractPath) {
-            Remove-Item $extractPath -Recurse -Force
+        
+        # Obtener información del archivo antes de descargar
+        try {
+            $response = Invoke-WebRequest -Uri $url -Method Head -ErrorAction Stop
+            $fileSize = [math]::Round($response.ContentLength / 1MB, 2)
+            Write-Output "Tamaño aproximado: ${fileSize}MB"
+        }
+        catch {
+            Write-Output "No se pudo obtener información del tamaño del archivo"
         }
 
+        # Descargar con progreso visible
+        $ProgressPreference = 'Continue'  # Asegurar que se muestre progreso
+        Invoke-WebRequest -Uri $url -OutFile $zipPath -ErrorAction Stop
+        
+        Write-Output "Descarga completada!"
+
+        # Verificar que el archivo se descargó correctamente
+        if (!(Test-Path $zipPath)) {
+            throw "Error: El archivo descargado no se encuentra en $zipPath"
+        }
+
+        $downloadedSize = (Get-Item $zipPath).Length
+        $downloadedMB = [math]::Round($downloadedSize / 1MB, 2)
+        Write-Output "Archivo descargado: ${downloadedMB}MB"
+
+        Write-Output "Extrayendo archivos..."
+        
         # Extraer directamente al directorio final
         Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force -ErrorAction Stop
+        
+        Write-Output "Extracción completada!"
 
         # Verificar si se creó un subdirectorio y mover contenido si es necesario
         $items = Get-ChildItem -Path $extractPath
