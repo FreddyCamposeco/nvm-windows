@@ -2,8 +2,6 @@
 
 > Node Version Manager para Windows nativo con PowerShell
 
-- 🛡️ **Manejo Robusto de Errores**: Validación completa y mensajes informativos Manager para Windows nativo con PowerShell
-
 - 🎯 **Comandos Directos**: Usa `nvm` desde cualquier directorio
 - 🎨 **Formato Mejorado**: Inspirado en nvm.fish con indicadores visuales
 - 🏷️ **Sistema de Alias Avanzado**: Soporte para `lts`, `latest` y nombres de LTS
@@ -16,38 +14,18 @@
 - 🏠 **Versión por Defecto**: Configura versión automática para nuevas sesiones
 - 🧹 **Limpieza Automática**: Comando `cleanup` para eliminar versiones innecesarias
 - 🛡️ **Desinstalación Forzada**: Opción `--force` para desinstalar versión activa
+- 🔗 **Sistema de Enlaces Simbólicos**: Gestión de versiones sin manipulación de PATH
 - 🛡️ **Vista Mejorada de LTS**: `nvm ls` muestra versiones LTS con estado y metadatos
 - 🛡️ **Manejo Robusto de Errores**: Validación completa y mensajes informativos
 - 📦 **Compatibilidad Total**: Funciona con npm, yarn, pnpm y más
-- 🔗 **Sistema de Enlaces Simbólicos**: Gestión de versiones sin manipulación de PATH
 - ⚡ **Cache Local Inteligente**: Acelera comandos y reduce tráfico de red
-- 🎨 **Diseño Visual Coherente**: Archivo `layout.html` como referencia visual
+- 🎨 **Diseño Visual Coherente**: Colores y formato perfectamente alineados
 
 [![Estado](https://img.shields.io/badge/Estado-Beta-orange.svg)](https://github.com/FreddyCamposeco/nvm-windows)
 [![Versión](https://img.shields.io/badge/Versi%C3%B3n-2.4--beta-blue.svg)](https://github.com/FreddyCamposeco/nvm-windows)
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1+-blue.svg)](https://github.com/PowerShell/PowerShell)
 
 Una adaptación completa de [nvm](https://github.com/nvm-sh/nvm) para Windows n
-
-## ✨ Características Principales
-
-- 🎯 **Comandos Directos**: Usa `nvm` desde cualquier directorio
-- 🎨 **Formato Mejorado**: Inspirado en nvm.fish con indicadores visuales
-- 🏷️ **Sistema de Alias Avanzado**: Soporte para `lts`, `latest` y nombres de LTS
-- 🔍 **Diagnóstico Integrado**: Comando `doctor` para verificar instalación
-- 📄 **Soporte para .nvmrc**: Detección automática de versiones por proyecto
-- 🔄 **Auto-cambio con .nvmrc**: Cambio automático al cambiar de directorio (como nvm.sh)
-- 🎨 **Colores Personalizables**: Esquemas de color completamente configurables
-- 🚀 **Instalación Automática**: Setup con un solo comando
-- 🔄 **Auto-actualización**: Comando `self-update` para mantener al día
-- 🏠 **Versión por Defecto**: Configura versión automática para nuevas sesiones
-- 🧹 **Limpieza Automática**: Comando `cleanup` para eliminar versiones innecesarias
-- 🔗 **Sistema de Enlaces Simbólicos**: Gestión de versiones sin manipulación de PATH
-- 🛡️ **Vista Mejorada de LTS**: `nvm ls` muestra versiones LTS con estado y metadatos
-- 🛡️ **Manejo Robusto de Errores**: Validación completa y mensajes informativos
-- 📦 **Compatibilidad Total**: Funciona con npm, yarn, pnpm y más
-- ⚡ **Cache Local Inteligente**: Acelera comandos y reduce tráfico de red
-- 🎨 **Diseño Visual Coherente**: Archivo `layout.html` como referencia visual
 
 ## 🔗 Sistema de Enlaces Simbólicos (v2.4-beta)
 
@@ -252,7 +230,7 @@ nvm-windows v2.3 incluye un formato de salida compacto e informativo inspirado e
   lts/hydrogen: v18.20.8     ✓
   lts/iron:     v20.19.5     ✓
 ▶ lts/jod:      v22.19.0     ✓
-ϟ .nvmrc:       v18.19.0     ✓
+ϟ .nvmrc:       v18.19.0     X
 
 Available (non-LTS):
   v24.x:        v24.8.0      ✓
@@ -270,7 +248,7 @@ Available (non-LTS):
 - `▶` indica la versión actualmente seleccionada - **verde**
 - `ϟ` indica que existe un archivo .nvmrc (sin forzar uso) - **amarillo**
 - `✓` marca versiones instaladas - **verde**
-- `✗` marca versiones no instaladas - **rojo**
+- `X` marca versiones no instaladas (solo para .nvmrc) - **rojo**
 - **Versiones LTS** se muestran en **amarillo** (etiquetas) y **gris** (versiones)
 - Alineación perfecta con ancho fijo compacto para consistencia
 - Versiones formateadas de manera natural (sin padding de ceros)
@@ -283,7 +261,6 @@ Available (non-LTS):
 |---------|-------------|
 | `nvm.ps1` | Script principal de nvm-windows con todas las funcionalidades |
 | `install-nvm.ps1` | Instalador automático para configuración inicial |
-| `layout.html` | **Referencia visual** del formato de salida (abre en navegador) |
 | `README.md` | Esta documentación completa |
 | `nvm.cmd` | Wrapper para compatibilidad con CMD |
 | `nvm-wrapper.cmd` | Wrapper adicional para entornos específicos |
@@ -294,32 +271,6 @@ Available (non-LTS):
 |---------|-------------|-----------|
 | `.version_cache.json` | Cache de versiones remotas (15 min) | `$NVM_DIR\` |
 | `.installed_versions_cache.json` | Cache de versiones instaladas (5 min) | `$NVM_DIR\` |
-
-### Archivo `layout.html`
-
-El archivo `layout.html` es una **réplica exacta** del formato visual de `nvm ls` implementada en HTML/CSS. Sirve como:
-
-- 🎨 **Especificación visual** autorizada del diseño
-- 🧪 **Entorno de pruebas** para cambios de formato
-- 📚 **Documentación interactiva** de colores y layout
-- 🔄 **Referencia de coherencia** entre HTML y PowerShell
-
-**Para usarlo:**
-
-```bash
-# Abrir en navegador
-start layout.html
-
-# O desde VS Code con Live Server
-# Ctrl+Shift+P → "Open with Live Server"
-```
-
-**Características técnicas:**
-
-- CSS Variables para colores consistentes
-- Diseño responsive con gradientes
-- Simulación perfecta de terminal
-- Actualización sincronizada con `nvm.ps1`
 
 ## 🎨 Personalización de Colores
 
@@ -420,9 +371,6 @@ nvm set-default lts
 
 # O una versión específica
 nvm set-default 20.19.5
-
-# Verificar configuración
-$env:nvm_default_version
 ```
 
 **Características:**
