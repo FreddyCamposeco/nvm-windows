@@ -236,18 +236,8 @@ function Invoke-NvmMain {
         [string[]]$Args = @()
     )
 
-    # Manejar comando especial para el hook de auto-cambio
-    if ($Args -contains "--get-nvmrc-version") {
-        $version = Get-NvmrcVersionForHook
-        if ($version) {
-            Write-Output $version
-        }
-        return
-    }
-
     # Parsear argumentos usando la función del módulo utils
-    $parsedArgs = Parse-NvmArguments -Arguments $Args
-
+    $parsedArgs = Parse-NvmArguments $Args
     $Command = $parsedArgs.Command
     $Version = $parsedArgs.Version
     $RemainingArgs = $parsedArgs.RemainingArgs
@@ -266,8 +256,7 @@ function Invoke-NvmMain {
                 Uninstall-Node $Version -Force:$force
             }
             "use" {
-                $quiet = $RemainingArgs -contains "--quiet"
-                Use-Node $Version -Quiet:$quiet
+                Use-Node $Version
             }
             "ls" {
                 Show-NvmVersions
@@ -350,23 +339,6 @@ function Invoke-NvmMain {
                     Write-NvmError "Version is required"
                 }
             }
-            "auto" {
-                if ($Version -eq "on") {
-                    Enable-NvmAutoSwitch
-                }
-                elseif ($Version -eq "off") {
-                    Disable-NvmAutoSwitch
-                }
-                elseif ($Version -eq "status") {
-                    Show-NvmAutoStatus
-                }
-                elseif ($Version -eq "setup") {
-                    Install-NvmAutoHook
-                }
-                else {
-                    Write-NvmError "Usage: nvm auto on|off|status|setup"
-                }
-            }
             default {
                 Write-NvmError "Unknown command: $Command"
                 Write-Host "Use 'nvm help' to see available commands"
@@ -376,144 +348,4 @@ function Invoke-NvmMain {
     else {
         Show-Help
     }
-}
-
-# Función para habilitar el auto-cambio de versiones con .nvmrc
-function Enable-NvmAutoSwitch {
-    $autoFile = "$NVM_DIR\.auto_enabled"
-    try {
-        "enabled" | Out-File -FilePath $autoFile -Encoding UTF8 -Force
-        Write-Output "✓ Auto-cambio de versiones habilitado"
-        Write-Output "Ahora se cambiará automáticamente a la versión del .nvmrc al cambiar de directorio"
-        Write-Output ""
-        Write-Output "Para que funcione, ejecuta:"
-        Write-Output "nvm auto setup"
-    }
-    catch {
-        Write-NvmError "Error al habilitar auto-cambio: $($_.Exception.Message)"
-    }
-}
-
-# Función para deshabilitar el auto-cambio de versiones
-function Disable-NvmAutoSwitch {
-    $autoFile = "$NVM_DIR\.auto_enabled"
-    if (Test-Path $autoFile) {
-        try {
-            Remove-Item $autoFile -Force
-            Write-Output "✓ Auto-cambio de versiones deshabilitado"
-        }
-        catch {
-            Write-NvmError "Error al deshabilitar auto-cambio: $($_.Exception.Message)"
-        }
-    }
-    else {
-        Write-Output "El auto-cambio ya está deshabilitado"
-    }
-}
-
-# Función para mostrar el estado del auto-cambio
-function Show-NvmAutoStatus {
-    $autoFile = "$NVM_DIR\.auto_enabled"
-    $profilePath = $PROFILE
-    $hasHook = $false
-
-    # Verificar si el perfil existe y contiene el hook
-    if (Test-Path $profilePath) {
-        try {
-            $profileContent = Get-Content $profilePath -Raw
-            $hasHook = $profileContent -match "Nvm-AutoSwitch"
-        }
-        catch {
-            # Ignorar errores de lectura
-        }
-    }
-
-    Write-Output "Estado del auto-cambio de versiones:"
-    Write-Output ""
-
-    if (Test-Path $autoFile) {
-        Write-Output "✓ Auto-cambio: Habilitado"
-    }
-    else {
-        Write-Output "✗ Auto-cambio: Deshabilitado"
-    }
-
-    if ($hasHook) {
-        Write-Output "✓ Hook en perfil: Instalado"
-    }
-    else {
-        Write-Output "✗ Hook en perfil: No instalado"
-        Write-Output ""
-        Write-Output "Para instalar el hook, ejecuta:"
-        Write-Output "nvm auto setup"
-    }
-}
-
-# Función para configurar el hook en el perfil de PowerShell
-function Install-NvmAutoHook {
-    $profilePath = $PROFILE
-    $hookFunction = @'
-
-# NVM Auto-Switch Hook
-function Nvm-AutoSwitch {
-    try {
-        $nvmrcVersion = & "$env:NVM_DIR\nvm.ps1" --get-nvmrc-version 2>$null
-        if ($nvmrcVersion) {
-            $currentVersion = & "$env:NVM_DIR\nvm.ps1" current 2>$null
-            if ($currentVersion -ne $nvmrcVersion) {
-                Write-Host "nvm: Cambiando a $nvmrcVersion (.nvmrc)" -ForegroundColor Yellow
-                & "$env:NVM_DIR\nvm.ps1" use $nvmrcVersion --quiet 2>$null | Out-Null
-            }
-        }
-    }
-    catch {
-        # Silenciar errores en el hook para no interferir con el prompt
-    }
-}
-
-# Ejecutar auto-switch al cambiar de directorio (solo si está habilitado)
-if (Test-Path "$env:NVM_DIR\.auto_enabled") {
-    Nvm-AutoSwitch
-}
-'@
-
-    # Crear directorio del perfil si no existe
-    $profileDir = Split-Path $profilePath -Parent
-    if (!(Test-Path $profileDir)) {
-        New-Item -ItemType Directory -Path $profileDir -Force | Out-Null
-    }
-
-    # Verificar si el hook ya existe
-    $hookExists = $false
-    if (Test-Path $profilePath) {
-        $profileContent = Get-Content $profilePath -Raw
-        $hookExists = $profileContent -match "Nvm-AutoSwitch"
-    }
-
-    if ($hookExists) {
-        Write-Output "✓ El hook de NVM ya está instalado en el perfil"
-        return
-    }
-
-    try {
-        # Agregar el hook al perfil
-        $hookFunction | Out-File -FilePath $profilePath -Append -Encoding UTF8
-        Write-Output "✓ Hook de auto-cambio instalado en el perfil de PowerShell"
-        Write-Output "Reinicia PowerShell para que tome efecto"
-    }
-    catch {
-        Write-NvmError "Error al instalar el hook: $($_.Exception.Message)"
-    }
-}
-
-# Función para obtener la versión del .nvmrc (para uso interno del hook)
-function Get-NvmrcVersionForHook {
-    $nvmrcVersion = Get-NvmrcVersion
-    if ($nvmrcVersion) {
-        $resolvedVersion = Resolve-Version $nvmrcVersion
-        if ($resolvedVersion) {
-            return $resolvedVersion
-        }
-    }
-    return $null
 }

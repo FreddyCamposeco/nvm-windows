@@ -2,18 +2,13 @@
 
 # Función para cambiar a una versión específica de Node.js
 function Use-Node {
-    param(
-        [string]$Version,
-        [switch]$Quiet
-    )
+    param([string]$Version)
 
     if ([string]::IsNullOrWhiteSpace($Version)) {
         # Buscar .nvmrc
         $nvmrcVersion = Get-NvmrcVersion
         if ($nvmrcVersion) {
-            if (-not $Quiet) {
-                Write-Output "Encontrado .nvmrc con versión: $nvmrcVersion"
-            }
+            Write-Output "Encontrado .nvmrc con versión: $nvmrcVersion"
             $Version = $nvmrcVersion
         }
         else {
@@ -29,7 +24,7 @@ function Use-Node {
     }
 
     # Si la resolución fue diferente, mostrar el alias usado
-    if ($resolvedVersion -ne $Version -and $Version -notmatch '^v?\d+\.\d+\.\d+$' -and -not $Quiet) {
+    if ($resolvedVersion -ne $Version -and $Version -notmatch '^v?\d+\.\d+\.\d+$') {
         Write-Output "Usando alias '$Version' -> '$resolvedVersion'"
     }
 
@@ -40,9 +35,7 @@ function Use-Node {
             $fileAliasVersion = Get-Content $aliasPath -Raw -Encoding UTF8 | ForEach-Object { $_.Trim() }
             if ($fileAliasVersion -and $fileAliasVersion -ne $Version) {
                 $resolvedVersion = $fileAliasVersion
-                if (-not $Quiet) {
-                    Write-Output "Usando alias guardado '$Version' -> '$resolvedVersion'"
-                }
+                Write-Output "Usando alias guardado '$Version' -> '$resolvedVersion'"
             }
         }
         catch {
@@ -60,10 +53,6 @@ function Use-Node {
     # Crear enlaces simbólicos en lugar de modificar PATH
     try {
         Set-NvmSymlinks $resolvedVersion
-
-        if (-not $Quiet) {
-            Write-Output "Ahora usando Node.js $resolvedVersion"
-        }
     }
     catch {
         Write-NvmError "Error al crear enlaces simbólicos: $($_.Exception.Message)"
@@ -75,6 +64,8 @@ function Use-Node {
 
     # Guardar la versión activa para persistencia entre sesiones
     Set-NvmActiveVersion $resolvedVersion
+
+    Write-Output "Ahora usando Node.js $resolvedVersion"
 }
 
 # Función para crear enlaces simbólicos para la versión activa
@@ -82,27 +73,24 @@ function Set-NvmSymlinks {
     param([string]$Version)
 
     $currentDir = "$NVM_DIR\current"
-    $currentBinDir = "$NVM_DIR\current\bin"
     $versionDir = "$NVM_DIR\$Version"
 
-    # Crear directorio current\bin si no existe
-    if (!(Test-Path $currentBinDir)) {
-        New-Item -ItemType Directory -Path $currentBinDir -Force | Out-Null
+    # Crear directorio current si no existe
+    if (!(Test-Path $currentDir)) {
+        New-Item -ItemType Directory -Path $currentDir -Force | Out-Null
     }
 
-    # Eliminar enlaces simbólicos existentes en current\bin
-    if (Test-Path $currentBinDir) {
-        Get-ChildItem -Path $currentBinDir | ForEach-Object {
-            if ($_.LinkType -eq "SymbolicLink") {
-                Remove-Item $_.FullName -Force
-            }
+    # Eliminar enlaces simbólicos existentes
+    Get-ChildItem -Path $currentDir | ForEach-Object {
+        if ($_.LinkType -eq "SymbolicLink") {
+            Remove-Item $_.FullName -Force
         }
     }
 
-    # Crear nuevos enlaces simbólicos en current\bin
+    # Crear nuevos enlaces simbólicos
     $items = Get-ChildItem -Path $versionDir
     foreach ($item in $items) {
-        $targetPath = Join-Path $currentBinDir $item.Name
+        $targetPath = Join-Path $currentDir $item.Name
         $sourcePath = $item.FullName
 
         # Crear enlace simbólico

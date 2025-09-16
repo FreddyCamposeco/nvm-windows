@@ -3,7 +3,7 @@
 
 param(
     [Parameter(ValueFromRemainingArguments = $true)]
-    [string[]]$ScriptArgs = @()
+    [string[]]$Args
 )
 
 # Importar módulos
@@ -17,4 +17,5 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 . "$ScriptDir\modules\nvm-main.ps1"
 
 # Ejecutar lógica principal
-Invoke-NvmMain -Args $ScriptArgs
+$paramHash = @{ Args = $Args }
+Invoke-NvmMain @paramHash
