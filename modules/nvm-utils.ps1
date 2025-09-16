@@ -24,6 +24,7 @@ function Show-Help {
     Write-Output "  doctor               Verifica el estado de la instalación"
     Write-Output "  stats                Muestra estadísticas del sistema"
     Write-Output "  migrate               Migra al sistema de enlaces simbólicos"
+    Write-Output "  symlink-status        Muestra estado de enlaces simbólicos"
     Write-Output "  self-update          Actualiza nvm-windows desde GitHub"
     Write-Output "  cleanup              Elimina versiones innecesarias (mantiene actual y LTS)"
     Write-Output "  set-colors <colores>  Establece el esquema de colores (5 caracteres)"

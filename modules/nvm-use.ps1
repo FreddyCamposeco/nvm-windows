@@ -92,19 +92,57 @@ function Set-NvmSymlinks {
     # Limpiar directorio current
     Get-ChildItem -Path $currentDir | Remove-Item -Recurse -Force
 
-    # Copiar archivos de la versión seleccionada (enfoque simple sin enlaces simbólicos)
-    $items = Get-ChildItem -Path $versionDir
-    foreach ($item in $items) {
-        $targetPath = Join-Path $currentDir $item.Name
-        $sourcePath = $item.FullName
+    # Verificar si podemos crear enlaces simbólicos
+    $canCreateSymlinks = Test-SymlinkPermissions
 
-        if ($item.PSIsContainer) {
-            # Copiar directorios recursivamente
-            Copy-Item -Path $sourcePath -Destination $targetPath -Recurse -Force
+    if ($canCreateSymlinks) {
+        Write-Host "Creando enlaces simbólicos para Node.js $Version..." -ForegroundColor Cyan
+
+        # Crear enlaces simbólicos para archivos y directorios
+        $items = Get-ChildItem -Path $versionDir
+        foreach ($item in $items) {
+            $targetPath = Join-Path $currentDir $item.Name
+            $sourcePath = $item.FullName
+
+            try {
+                if ($item.PSIsContainer) {
+                    # Crear enlace simbólico para directorios
+                    New-Item -ItemType SymbolicLink -Path $targetPath -Target $sourcePath | Out-Null
+                } else {
+                    # Crear enlace simbólico para archivos
+                    New-Item -ItemType SymbolicLink -Path $targetPath -Target $sourcePath | Out-Null
+                }
+            } catch {
+                Write-Host "No se pudo crear enlace simbólico para $($item.Name): $($_.Exception.Message)" -ForegroundColor Red
+                # Fallback: copiar el archivo/directorio
+                if ($item.PSIsContainer) {
+                    Copy-Item -Path $sourcePath -Destination $targetPath -Recurse -Force
+                } else {
+                    Copy-Item -Path $sourcePath -Destination $targetPath -Force
+                }
+            }
         }
-        else {
-            # Copiar archivos
-            Copy-Item -Path $sourcePath -Destination $targetPath -Force
+
+        # Verificar enlaces creados
+        $symlinks = Get-ChildItem -Path $currentDir | Where-Object { $_.LinkType -eq "SymbolicLink" }
+        if ($symlinks.Count -gt 0) {
+            Write-Host "Enlaces simbólicos creados: $($symlinks.Count) archivos/directorios" -ForegroundColor Green
+        }
+    } else {
+        Write-Host "No hay permisos para crear enlaces simbólicos. Usando sistema de copias..." -ForegroundColor Red
+        Write-Host "Copiando archivos de Node.js $Version..." -ForegroundColor Cyan
+
+        # Fallback: Copiar archivos (método actual)
+        $items = Get-ChildItem -Path $versionDir
+        foreach ($item in $items) {
+            $targetPath = Join-Path $currentDir $item.Name
+            $sourcePath = $item.FullName
+
+            if ($item.PSIsContainer) {
+                Copy-Item -Path $sourcePath -Destination $targetPath -Recurse -Force
+            } else {
+                Copy-Item -Path $sourcePath -Destination $targetPath -Force
+            }
         }
     }
 }
@@ -150,20 +188,128 @@ function Show-CurrentVersion {
 
 # Función para migrar al sistema de enlaces simbólicos
 function Migrate-ToSymlinks {
-    Write-Output "Migrando al sistema de enlaces simbólicos..."
+    Write-Host "Iniciando migración al sistema de enlaces simbólicos..." -ForegroundColor Cyan
+
+    # Verificar permisos para enlaces simbólicos
+    $canCreateSymlinks = Test-SymlinkPermissions
+
+    if (-not $canCreateSymlinks) {
+        Write-Host "No se detectaron permisos para crear enlaces simbólicos." -ForegroundColor Red
+        Write-Host "Para habilitar enlaces simbólicos:" -ForegroundColor Yellow
+        Write-Host "  1. Ejecutar PowerShell como Administrador" -ForegroundColor Cyan
+        Write-Host "  2. Ejecutar: fsutil behavior set SymlinkEvaluation L2L:1 L2R:1 R2L:1 R2R:1" -ForegroundColor Cyan
+        Write-Host "  3. Reiniciar PowerShell y ejecutar: nvm migrate" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "Continuando con sistema de copias..." -ForegroundColor Yellow
+        return
+    }
 
     # Obtener versión actualmente activa
     $currentVersion = Get-NvmCurrentVersion
     if ($currentVersion) {
         try {
+            Write-Host "Migrando versión $currentVersion a enlaces simbólicos..." -ForegroundColor Cyan
             Set-NvmSymlinks $currentVersion
-            Write-Output "Migración completada. Ahora usando enlaces simbólicos."
+
+            # Verificar que los enlaces se crearon correctamente
+            $symlinks = Get-ChildItem -Path "$NVM_DIR\current" | Where-Object { $_.LinkType -eq "SymbolicLink" }
+            if ($symlinks.Count -gt 0) {
+                Write-Host "✅ Migración completada exitosamente!" -ForegroundColor Green
+                Write-Host "Ahora usando enlaces simbólicos: $($symlinks.Count) archivos/directorios" -ForegroundColor Green
+            } else {
+                Write-Host "Los enlaces simbólicos no se crearon correctamente. Usando sistema de copias." -ForegroundColor Red
+            }
         }
         catch {
-            Write-NvmError "Error durante la migración: $($_.Exception.Message)"
+            Write-Host "Error durante la migración: $($_.Exception.Message)" -ForegroundColor Red
+            Write-Host "Revirtiendo a sistema de copias..." -ForegroundColor Yellow
         }
     }
     else {
-        Write-NvmError "No se pudo determinar la versión actual para migrar"
+        Write-Host "No se pudo determinar la versión actual para migrar" -ForegroundColor Red
+    }
+}
+
+# Función para verificar permisos de enlaces simbólicos
+function Test-SymlinkPermissions {
+    try {
+        $testDir = "$NVM_DIR\.symlink_test"
+        $testFile = "$testDir\test.txt"
+
+        # Crear directorio de prueba
+        New-Item -ItemType Directory -Path $testDir -Force | Out-Null
+
+        # Crear archivo de prueba
+        "test" | Out-File -FilePath $testFile -Encoding UTF8
+
+        # Intentar crear enlace simbólico
+        $symlinkPath = "$testDir\test_link.txt"
+        New-Item -ItemType SymbolicLink -Path $symlinkPath -Target $testFile -ErrorAction Stop | Out-Null
+
+        # Verificar que el enlace se creó
+        if (Test-Path $symlinkPath) {
+            $item = Get-Item $symlinkPath -ErrorAction SilentlyContinue
+            $isSymlink = $item -and $item.LinkType -eq "SymbolicLink"
+        } else {
+            $isSymlink = $false
+        }
+
+        # Limpiar archivos de prueba
+        Remove-Item -Path $testDir -Recurse -Force -ErrorAction SilentlyContinue
+
+        return $isSymlink
+    } catch {
+        # Limpiar archivos de prueba en caso de error
+        if (Test-Path $testDir) {
+            Remove-Item -Path $testDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        return $false
+    }
+}
+
+# Función para verificar estado de enlaces simbólicos
+function Get-NvmSymlinkStatus {
+    $currentDir = "$NVM_DIR\current"
+
+    if (!(Test-Path $currentDir)) {
+        Write-host "Directorio current no existe" -ForegroundColor Yellow
+        return
+    }
+
+    $items = Get-ChildItem -Path $currentDir
+    $symlinks = $items | Where-Object { $_.LinkType -eq "SymbolicLink" }
+    $regularFiles = $items | Where-Object { $_.LinkType -ne "SymbolicLink" -and -not $_.PSIsContainer }
+    $directories = $items | Where-Object { $_.PSIsContainer }
+
+    Write-Host "Estado del directorio current:" -ForegroundColor Cyan
+    Write-Host "  📂 Total de elementos: $($items.Count)" -ForegroundColor Cyan
+    Write-Host "  🔗 Enlaces simbólicos: $($symlinks.Count)" -ForegroundColor Green
+    Write-Host "  📄 Archivos regulares: $($regularFiles.Count)" -ForegroundColor Yellow
+    Write-Host "  📁 Directorios: $($directories.Count)" -ForegroundColor Magenta
+
+    if ($symlinks.Count -gt 0) {
+        Write-Host ""
+        Write-Host "Enlaces simbólicos encontrados:" -ForegroundColor Green
+        foreach ($symlink in $symlinks) {
+            try {
+                $target = (Get-Item $symlink.FullName).Target
+                Write-Host "  $($symlink.Name) -> $target" -ForegroundColor Gray
+            } catch {
+                Write-Host "  $($symlink.Name) -> [Error al obtener target]" -ForegroundColor Red
+            }
+        }
+    }
+
+    # Verificar permisos
+    $canCreateSymlinks = Test-SymlinkPermissions
+    Write-Host ""
+    if ($canCreateSymlinks) {
+        Write-Host "✅ Permisos para enlaces simbólicos: HABILITADOS" -ForegroundColor Green
+    } else {
+        Write-Host "❌ Permisos para enlaces simbólicos: DESHABILITADOS" -ForegroundColor Red
+        Write-Host "   Para habilitar:" -ForegroundColor Yellow
+        Write-Host "   1. Ejecutar PowerShell como Administrador" -ForegroundColor Cyan
+        Write-Host "   2. Ejecutar: fsutil behavior set SymlinkEvaluation L2L:1 L2R:1 R2L:1 R2R:1" -ForegroundColor Cyan
+        Write-Host "   3. Reiniciar PowerShell" -ForegroundColor Cyan
     }
 }

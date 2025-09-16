@@ -434,6 +434,9 @@ function Invoke-NvmMain {
             "migrate" {
                 Migrate-ToSymlinks
             }
+            "symlink-status" {
+                Get-NvmSymlinkStatus
+            }
             "self-update" {
                 Update-NvmSelf
             }

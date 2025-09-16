@@ -331,7 +331,10 @@ function Show-NvmVersions {
     $installedVersions = Get-InstalledVersionsFromCache
 
     # Get latest version
-    $latestVersion = $versions[0].version
+    $latestVersionObj = $versions | Where-Object { -not $_.lts } | Sort-Object { [version]($_.version -replace '^v', '') } -Descending | Select-Object -First 1
+    $latestVersion = $latestVersionObj.version
+    $isInstalled = $installedVersions -contains $latestVersion
+    $isCurrent = $currentVersion -eq $latestVersion
 
     # Create a mapping of installed versions to LTS names
     $installedLtsMapping = @{}
@@ -351,7 +354,7 @@ function Show-NvmVersions {
     $ltsVersions = $latestLtsVersions
 
     # Get some recent non-LTS versions (last 3 major versions before latest)
-    $latestMajor = [version]($latestVersion -replace '^v', '') | Select-Object -ExpandProperty Major
+    $latestMajor = [version]($latestVersionObj.version -replace '^v', '') | Select-Object -ExpandProperty Major
     $nonLtsVersions = @()
     for ($i = 1; $i -le 3; $i++) {
         $major = $latestMajor - $i
@@ -432,15 +435,40 @@ function Show-NvmVersions {
     # Show global version (always shown with →)
     $globalVersion = $defaultVersion
     if ($globalVersion) {
-        Format-NvmVersionLine -Type 'global' -Label 'global:' -Version $globalVersion -IsInstalled $false -IsCurrent $false -Compact:$Compact
+        $normalizedGlobalVersion = Normalize-Version $globalVersion
+        $isInstalled = $installedVersions -contains $normalizedGlobalVersion
+        $isCurrent = $currentVersion -eq $normalizedGlobalVersion
+
+        # Check for updates: compare with latest available version
+        $hasUpdate = $false
+        if ($isInstalled) {
+            $latestAvailable = $versions | Sort-Object { [version]($_.version -replace '^v', '') } -Descending | Select-Object -First 1
+            if ($latestAvailable) {
+                $installedVer = [version]($normalizedGlobalVersion -replace '^v', '')
+                $latestVer = [version]($latestAvailable.version -replace '^v', '')
+                $hasUpdate = $installedVer -lt $latestVer
+            }
+        }
+
+        Format-NvmVersionLine -Type 'global' -Label 'global:' -Version $globalVersion -IsInstalled $isInstalled -IsCurrent $isCurrent -HasUpdate $hasUpdate -Compact:$Compact
     }
 
     # Show latest version
     if ($latestVersion) {
-        $isInstalled = $installedVersions -contains $latestVersion
-        $isCurrent = $currentVersion -eq $latestVersion
+        $normalizedLatestVersion = Normalize-Version $latestVersionObj.version
+        # $isInstalled ya se calculó correctamente arriba, no redefinir
+        # $isInstalled = $installedVersions -contains $normalizedLatestVersion
+        $isCurrent = $currentVersion -eq $normalizedLatestVersion
 
-        Format-NvmVersionLine -Type 'latest' -Label 'latest:' -Version $latestVersion -IsInstalled $isInstalled -IsCurrent $isCurrent -Compact:$Compact
+        # Check for updates: compare installed version with latest available
+        $hasUpdate = $false
+        if ($isInstalled) {
+            $installedVer = [version]($normalizedLatestVersion -replace '^v', '')
+            $latestVer = [version]($latestVersionObj.version -replace '^v', '')
+            $hasUpdate = $installedVer -lt $latestVer
+        }
+
+        Format-NvmVersionLine -Type 'latest' -Label 'latest:' -Version $latestVersionObj.version -IsInstalled $isInstalled -IsCurrent $isCurrent -HasUpdate $hasUpdate -Compact:$Compact
     }
 
     # LTS versions
@@ -448,26 +476,37 @@ function Show-NvmVersions {
         $normalizedLtsVersion = Normalize-Version $lts.version
         $isInstalled = $installedVersions -contains $normalizedLtsVersion
         $isCurrent = $currentVersion -eq $normalizedLtsVersion
+
+        # Check for updates: compare installed version with latest available for this LTS line
+        $hasUpdate = $false
+        if ($isInstalled) {
+            # Find all versions for this LTS line
+            $ltsLineVersions = $versions | Where-Object { $_.lts -eq $lts.lts } | Sort-Object { [version]($_.version -replace '^v', '') } -Descending
+            if ($ltsLineVersions.Count -gt 1) {
+                $latestForThisLts = $ltsLineVersions[0].version
+                $installedVer = [version]($normalizedLtsVersion -replace '^v', '')
+                $latestVer = [version]($latestForThisLts -replace '^v', '')
+                $hasUpdate = $installedVer -lt $latestVer
+            }
+        }
+
         $name = $lts.lts.ToLower()
         $label = "lts/$name`:"
 
-        Format-NvmVersionLine -Type 'lts' -Label $label -Version $lts.version -IsInstalled $isInstalled -IsCurrent $isCurrent -Compact:$Compact
+        Format-NvmVersionLine -Type 'lts' -Label $label -Version $lts.version -IsInstalled $isInstalled -IsCurrent $isCurrent -HasUpdate $hasUpdate -Compact:$Compact
     }
 
     # .nvmrc version (if exists)
     if ($nvmrcVersion) {
-        # Resolver la versión del .nvmrc (convertir aliases como 'lts' a versiones específicas)
-        $resolvedNvmrcVersion = Resolve-Version $nvmrcVersion
-        if ($resolvedNvmrcVersion) {
-            $normalizedNvmrcVersion = Normalize-Version $resolvedNvmrcVersion
-            $isInstalled = $installedVersions -contains $normalizedNvmrcVersion
-            $isCurrent = $currentVersion -eq $normalizedNvmrcVersion
-        } else {
-            $isInstalled = $false
-            $isCurrent = $false
-        }
+        $normalizedNvmrcVersion = Normalize-Version $nvmrcVersion
+        $isInstalled = $installedVersions -contains $normalizedNvmrcVersion
+        $isCurrent = $currentVersion -eq $normalizedNvmrcVersion
 
-        Format-NvmVersionLine -Type 'nvmrc' -Label '.nvmrc:' -Version $nvmrcVersion -IsInstalled $isInstalled -IsCurrent $isCurrent -Compact:$Compact
+        # .nvmrc doesn't need update indicator, just show if installed
+        $hasUpdate = $false
+        # No need to check for updates for .nvmrc
+
+        Format-NvmVersionLine -Type 'nvmrc' -Label '.nvmrc:' -Version $nvmrcVersion -IsInstalled $isInstalled -IsCurrent $isCurrent -HasUpdate $hasUpdate -Compact:$Compact
     }
 
     # Non-LTS versions - show only installed non-LTS versions
@@ -520,7 +559,7 @@ function Format-NvmInfoMessage {
             Write-NvmColoredText "ℹ️ $Message" "c"
         }
         'success' {
-            Write-NvmColoredText "✅ $Message" "G"
+            Write-NvmColoredText "✅ $Message" "Green"
         }
         'warning' {
             Write-NvmColoredText "⚠️ $Message" "y"
@@ -738,7 +777,7 @@ function Format-NvmVersionLine {
     .PARAMETER Type
         Type of version line: 'system', 'global', 'latest', 'lts', 'nvmrc', 'non-lts'
     .PARAMETER Label
-        The label text (e.g., 'latest:', 'lts/iron:')
+        The label text (e.g., 'latest:', 'lts/iron':)
     .PARAMETER Version
         The version string
     .PARAMETER IsInstalled
@@ -747,6 +786,8 @@ function Format-NvmVersionLine {
         Whether this is the currently active version
     .PARAMETER LtsName
         For LTS versions, the LTS name (e.g., 'iron', 'jod')
+    .PARAMETER HasUpdate
+        Whether there's an update available for this version
     .PARAMETER Compact
         Whether to use compact formatting
     #>
@@ -769,6 +810,9 @@ function Format-NvmVersionLine {
 
         [Parameter(Mandatory = $false)]
         [string]$LtsName = "",
+
+        [Parameter(Mandatory = $false)]
+        [bool]$HasUpdate = $false,
 
         [Parameter(Mandatory = $false)]
         [switch]$Compact
@@ -807,21 +851,21 @@ function Format-NvmVersionLine {
 
     # Determine colors based on type
     $labelColor = switch ($Type) {
-        'system' { "y" }  # Yellow for system
-        'global' { "e" }  # Gray for global label
-        'latest' { "e" }  # Gray for latest label
-        'lts' { "y" }     # Yellow for LTS labels
-        'nvmrc' { "m" }   # Purple for .nvmrc
-        'non-lts' { "e" } # Gray for non-LTS
+        'system' { "Yellow" }  # Yellow for system
+        'global' { "DarkGray" }  # Gray for global label
+        'latest' { "DarkGray" }  # Gray for latest label
+        'lts' { "Yellow" }     # Yellow for LTS labels
+        'nvmrc' { "Magenta" }   # Purple for .nvmrc
+        'non-lts' { "DarkGray" } # Gray for non-LTS
     }
 
     $versionColor = switch ($Type) {
-        'system' { "y" }  # Yellow for system
-        'global' { "c" }  # Cyan for global version
-        'latest' { "c" }  # Cyan for latest version
-        'lts' { "e" }     # Gray for LTS versions
-        'nvmrc' { "m" }   # Purple for .nvmrc
-        'non-lts' { "e" } # Gray for non-LTS
+        'system' { "Yellow" }  # Yellow for system
+        'global' { if ($IsInstalled) { "Cyan" } else { "DarkGray" } }  # Cyan if installed, gray if not
+        'latest' { if ($IsInstalled) { "Cyan" } else { "DarkGray" } }  # Cyan if installed, gray if not
+        'lts' { if ($IsInstalled) { "Cyan" } else { "DarkGray" } }     # Cyan if installed, gray if not
+        'nvmrc' { if ($IsInstalled) { "Magenta" } else { "DarkGray" } }   # Purple if installed, gray if not
+        'non-lts' { if ($IsInstalled) { "Cyan" } else { "DarkGray" } } # Cyan if installed, gray if not
     }
 
     # Calculate spacing
@@ -842,38 +886,38 @@ function Format-NvmVersionLine {
     switch ($Type) {
         'system' {
             if ($IsCurrent) {
-                Write-NvmColoredText "▶" "G" -NoNewline
+                Write-Host "▶" -ForegroundColor Green -NoNewline
             } else {
                 Write-Host " " -NoNewline
             }
         }
         'global' {
-            Write-NvmColoredText "→" "c" -NoNewline
+            Write-Host "→" -ForegroundColor Cyan -NoNewline
         }
         'latest' {
             if ($IsCurrent) {
-                Write-NvmColoredText "▶" "G" -NoNewline
+                Write-Host "▶" -ForegroundColor Green -NoNewline
             } else {
                 Write-Host " " -NoNewline
             }
         }
         'lts' {
             if ($IsCurrent) {
-                Write-NvmColoredText "▶" "G" -NoNewline
+                Write-Host "▶" -ForegroundColor Green -NoNewline
             } else {
                 Write-Host " " -NoNewline
             }
         }
         'nvmrc' {
             if ($IsCurrent) {
-                Write-NvmColoredText "▶" "Y" -NoNewline
+                Write-Host "▶" -ForegroundColor Yellow -NoNewline
             } else {
-                Write-NvmColoredText "ϟ" "Y" -NoNewline
+                Write-Host "ϟ" -ForegroundColor Yellow -NoNewline
             }
         }
         'non-lts' {
             if ($IsCurrent) {
-                Write-NvmColoredText "▶" "G" -NoNewline
+                Write-Host "▶" -ForegroundColor Green -NoNewline
             } else {
                 Write-Host " " -NoNewline
             }
@@ -884,18 +928,25 @@ function Format-NvmVersionLine {
     Write-Host $spaceAfterIndicator -NoNewline
 
     # Column 3-16: Label with padding
-    Write-NvmColoredText "$Label$labelPadding" $labelColor -NoNewline
+    Write-Host "$Label$labelPadding" -ForegroundColor $labelColor -NoNewline
 
     # Column 17+: Version
-    Write-NvmColoredText $formattedVersion $versionColor -NoNewline
+    Write-Host $formattedVersion -ForegroundColor $versionColor -NoNewline
 
     # Space between version and check
     Write-Host $spaceAfterVersion -NoNewline
 
     # Column 27: Installation indicator
     if ($IsInstalled) {
-        Write-NvmColoredText "✓" "G"
+        if ($HasUpdate) {
+            Write-Host "✓▲" -ForegroundColor Yellow -NoNewline
+        } else {
+            Write-Host "✓" -ForegroundColor Green -NoNewline
+        }
     } else {
-        Write-Host " "
+        Write-Host " " -NoNewline
     }
+
+    # Add newline at the end of each version line
+    Write-Host ""
 }
