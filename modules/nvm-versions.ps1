@@ -670,8 +670,59 @@ function Format-NvmSimpleList {
 # Función para mostrar versiones remotas
 function Show-RemoteVersions {
     try {
-        $versions = Get-NvmVersionsWithCache
-        $versions | ForEach-Object { Write-Host $_.version }
+        $remoteVersions = Get-NvmVersionsWithCache
+        $installedVersions = Get-InstalledVersionsFromCache
+
+        # Crear un array de versiones instaladas para búsqueda
+        $installedArray = @()
+        foreach ($installed in $installedVersions) {
+            $installedArray += $installed
+        }
+
+        Write-Host "Remote versions:" -ForegroundColor Cyan
+        Write-Host "  (✓ installed, ✗ not installed, LTS name shown for LTS versions)" -ForegroundColor Gray
+        Write-Host ""
+
+        foreach ($version in $remoteVersions) {
+            $versionNumber = $version.version
+            $isInstalled = $installedArray -contains $versionNumber
+
+            # Determinar el indicador
+            $indicator = if ($isInstalled) { "✓" } else { "✗" }
+
+            # Determinar el nombre LTS
+            $ltsInfo = ""
+            if ($version.lts -and $version.lts -ne "false") {
+                $ltsInfo = " ($($version.lts))"
+            }
+
+            # Formatear la línea
+            $statusColor = if ($isInstalled) { "Green" } else { "Red" }
+            $versionColor = if ($version.lts -and $version.lts -ne "false") { "Yellow" } else { "White" }
+
+            Write-Host "  $indicator " -ForegroundColor $statusColor -NoNewline
+            Write-Host "$versionNumber" -ForegroundColor $versionColor -NoNewline
+            Write-Host "$ltsInfo" -ForegroundColor Yellow
+        }
+    }
+    catch {
+        Write-NvmError "Failed to fetch remote versions: $($_.Exception.Message)"
+    }
+}
+
+# Función mejorada para mostrar versiones remotas con indicadores
+function Show-RemoteVersionsEnhanced {
+    try {
+        Write-Host "Testing enhanced ls-remote..." -ForegroundColor Cyan
+        $remoteVersions = Get-NvmVersionsWithCache
+        Write-Host "Found $($remoteVersions.Count) remote versions" -ForegroundColor Green
+
+        $installedVersions = Get-InstalledVersionsFromCache
+        Write-Host "Found $($installedVersions.Count) installed versions" -ForegroundColor Green
+
+        foreach ($version in $remoteVersions | Select-Object -First 5) {
+            Write-Host "Version: $($version.version), LTS: $($version.lts)" -ForegroundColor Yellow
+        }
     }
     catch {
         Write-NvmError "Failed to fetch remote versions: $($_.Exception.Message)"

@@ -105,10 +105,12 @@ function Migrate-NvmInstallation {
 
 # Función para mostrar la versión de NVM
 function Show-NvmVersion {
+    Write-Output ""
     Write-Output "nvm-windows $NVM_VERSION"
     Write-Output "Node Version Manager para Windows (PowerShell)"
     Write-Output ""
     Write-Output "Repositorio: https://github.com/freddyCamposeco/nvm-windows"
+    Write-Output ""
 }
 
 # Función para auto-actualizar NVM
@@ -304,7 +306,86 @@ function Invoke-NvmMain {
                 Show-NvmVersions
             }
             "ls-remote" {
-                Show-RemoteVersions
+                try {
+                    $remoteVersions = Get-NvmVersionsWithCache
+                    $installedVersions = Get-InstalledVersionsFromCache
+
+                    # Crear un array de versiones instaladas para búsqueda
+                    $installedArray = @()
+                    foreach ($installed in $installedVersions) {
+                        $installedArray += $installed
+                    }
+
+                    Write-Host "Remote versions:" -ForegroundColor Cyan
+                    Write-Host "  (✓ installed, ✗ not installed, LTS name shown for LTS versions)" -ForegroundColor Gray
+                    Write-Host ""
+
+                    foreach ($version in $remoteVersions) {
+                        $versionNumber = $version.version
+                        $isInstalled = $installedArray -contains $versionNumber
+
+                        # Determinar el indicador
+                        $indicator = if ($isInstalled) { "✓" } else { "✗" }
+
+                        # Determinar el nombre LTS
+                        $ltsInfo = ""
+                        if ($version.lts -and $version.lts -ne "false") {
+                            $ltsInfo = " ($($version.lts))"
+                        }
+
+                        # Formatear la línea
+                        $statusColor = if ($isInstalled) { "Green" } else { "Red" }
+                        $versionColor = if ($version.lts -and $version.lts -ne "false") { "Yellow" } else { "White" }
+
+                        Write-Host "  $indicator " -ForegroundColor $statusColor -NoNewline
+                        Write-Host "$versionNumber" -ForegroundColor $versionColor -NoNewline
+                        Write-Host "$ltsInfo" -ForegroundColor Yellow
+                    }
+                }
+                catch {
+                    Write-NvmError "Failed to fetch remote versions: $($_.Exception.Message)"
+                }
+            }
+            "ls-remote-enhanced" {
+                try {
+                    $remoteVersions = Get-NvmVersionsWithCache
+                    $installedVersions = Get-InstalledVersionsFromCache
+
+                    # Crear un array de versiones instaladas para búsqueda
+                    $installedArray = @()
+                    foreach ($installed in $installedVersions) {
+                        $installedArray += $installed
+                    }
+
+                    Write-Host "Remote versions:" -ForegroundColor Cyan
+                    Write-Host "  (✓ installed, ✗ not installed, LTS name shown for LTS versions)" -ForegroundColor Gray
+                    Write-Host ""
+
+                    foreach ($version in $remoteVersions | Select-Object -First 20) {
+                        $versionNumber = $version.version
+                        $isInstalled = $installedArray -contains $versionNumber
+
+                        # Determinar el indicador
+                        $indicator = if ($isInstalled) { "✓" } else { "✗" }
+
+                        # Determinar el nombre LTS
+                        $ltsInfo = ""
+                        if ($version.lts -and $version.lts -ne "false") {
+                            $ltsInfo = " ($($version.lts))"
+                        }
+
+                        # Formatear la línea
+                        $statusColor = if ($isInstalled) { "Green" } else { "Red" }
+                        $versionColor = if ($version.lts -and $version.lts -ne "false") { "Yellow" } else { "White" }
+
+                        Write-Host "  $indicator " -ForegroundColor $statusColor -NoNewline
+                        Write-Host "$versionNumber" -ForegroundColor $versionColor -NoNewline
+                        Write-Host "$ltsInfo" -ForegroundColor Yellow
+                    }
+                }
+                catch {
+                    Write-NvmError "Failed to fetch remote versions: $($_.Exception.Message)"
+                }
             }
             "current" {
                 Show-CurrentVersion
