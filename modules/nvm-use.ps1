@@ -80,27 +80,22 @@ function Set-NvmSymlinks {
         New-Item -ItemType Directory -Path $currentDir -Force | Out-Null
     }
 
-    # Eliminar enlaces simbólicos existentes
-    Get-ChildItem -Path $currentDir | ForEach-Object {
-        if ($_.LinkType -eq "SymbolicLink") {
-            Remove-Item $_.FullName -Force
-        }
-    }
+    # Limpiar directorio current
+    Get-ChildItem -Path $currentDir | Remove-Item -Recurse -Force
 
-    # Crear nuevos enlaces simbólicos
+    # Copiar archivos de la versión seleccionada (enfoque simple sin enlaces simbólicos)
     $items = Get-ChildItem -Path $versionDir
     foreach ($item in $items) {
         $targetPath = Join-Path $currentDir $item.Name
         $sourcePath = $item.FullName
 
-        # Crear enlace simbólico
         if ($item.PSIsContainer) {
-            # Para directorios
-            New-Item -ItemType SymbolicLink -Path $targetPath -Target $sourcePath -Force | Out-Null
+            # Copiar directorios recursivamente
+            Copy-Item -Path $sourcePath -Destination $targetPath -Recurse -Force
         }
         else {
-            # Para archivos
-            New-Item -ItemType SymbolicLink -Path $targetPath -Target $sourcePath -Force | Out-Null
+            # Copiar archivos
+            Copy-Item -Path $sourcePath -Destination $targetPath -Force
         }
     }
 }

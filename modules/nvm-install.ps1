@@ -92,6 +92,14 @@ function Install-Node {
 
         # Actualizar cache de versiones instaladas
         Save-InstalledVersionsCache
+
+        # Activar automáticamente la versión recién instalada
+        try {
+            Use-Node $Version
+        }
+        catch {
+            Write-NvmError "Versión instalada pero no se pudo activar automáticamente: $($_.Exception.Message)"
+        }
     }
     catch {
         Write-NvmError "Error durante la instalación: $($_.Exception.Message)"

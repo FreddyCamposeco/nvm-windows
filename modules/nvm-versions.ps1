@@ -207,8 +207,8 @@ function Get-InstalledVersionsFromCache {
 
 # Función para obtener la versión actual de Node.js activa
 function Get-NvmCurrentVersion {
-    # Primero intentar con enlaces simbólicos en current\bin
-    $currentNodePath = "$NVM_DIR\current\bin\node.exe"
+    # Primero intentar con archivos copiados en current
+    $currentNodePath = "$NVM_DIR\current\node.exe"
     if (Test-Path $currentNodePath) {
         try {
             $version = & $currentNodePath --version 2>$null
