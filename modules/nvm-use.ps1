@@ -84,55 +84,67 @@ function Set-NvmSymlinks {
     $currentDir = "$NVM_DIR\current"
     $versionDir = "$NVM_DIR\$Version"
 
-    # Crear directorio current si no existe
-    if (!(Test-Path $currentDir)) {
-        New-Item -ItemType Directory -Path $currentDir -Force | Out-Null
-    }
-
-    # Limpiar directorio current
-    Get-ChildItem -Path $currentDir | Remove-Item -Recurse -Force
-
     # Verificar si podemos crear enlaces simbólicos
     $canCreateSymlinks = Test-SymlinkPermissions
 
     if ($canCreateSymlinks) {
-        Write-Host "Creando enlaces simbólicos para Node.js $Version..." -ForegroundColor Cyan
+        Write-Host "Creando enlace simbólico para Node.js $Version..." -ForegroundColor Cyan
 
-        # Crear enlaces simbólicos para archivos y directorios
-        $items = Get-ChildItem -Path $versionDir
-        foreach ($item in $items) {
-            $targetPath = Join-Path $currentDir $item.Name
-            $sourcePath = $item.FullName
+        try {
+            # Limpiar directorio current si existe
+            if (Test-Path $currentDir) {
+                Remove-Item -Path $currentDir -Recurse -Force
+            }
 
-            try {
-                if ($item.PSIsContainer) {
-                    # Crear enlace simbólico para directorios
-                    New-Item -ItemType SymbolicLink -Path $targetPath -Target $sourcePath | Out-Null
-                } else {
-                    # Crear enlace simbólico para archivos
-                    New-Item -ItemType SymbolicLink -Path $targetPath -Target $sourcePath | Out-Null
-                }
-            } catch {
-                Write-Host "No se pudo crear enlace simbólico para $($item.Name): $($_.Exception.Message)" -ForegroundColor Red
-                # Fallback: copiar el archivo/directorio
+            # Crear enlace simbólico del directorio current completo
+            New-Item -ItemType SymbolicLink -Path $currentDir -Target $versionDir | Out-Null
+
+            Write-Host "Enlace simbólico creado: $currentDir -> $versionDir" -ForegroundColor Green
+            Write-Host "Cambios de versión ahora son instantáneos!" -ForegroundColor Green
+
+        } catch {
+            Write-host "No se pudo crear enlace simbólico: $($_.Exception.Message)" -ForegroundColor Red
+            Write-Host "Usando sistema de copias como fallback..." -ForegroundColor Yellow
+
+            # Fallback: Crear directorio y copiar archivos
+            if (!(Test-Path $currentDir)) {
+                New-Item -ItemType Directory -Path $currentDir -Force | Out-Null
+            }
+
+            # Limpiar directorio current
+            Get-ChildItem -Path $currentDir | Remove-Item -Recurse -Force
+
+            Write-Host "Copiando archivos de Node.js $Version..." -ForegroundColor Cyan
+
+            # Copiar archivos (método alternativo)
+            $items = Get-ChildItem -Path $versionDir
+            foreach ($item in $items) {
+                $targetPath = Join-Path $currentDir $item.Name
+                $sourcePath = $item.FullName
+
                 if ($item.PSIsContainer) {
                     Copy-Item -Path $sourcePath -Destination $targetPath -Recurse -Force
                 } else {
                     Copy-Item -Path $sourcePath -Destination $targetPath -Force
                 }
             }
-        }
 
-        # Verificar enlaces creados
-        $symlinks = Get-ChildItem -Path $currentDir | Where-Object { $_.LinkType -eq "SymbolicLink" }
-        if ($symlinks.Count -gt 0) {
-            Write-Host "Enlaces simbólicos creados: $($symlinks.Count) archivos/directorios" -ForegroundColor Green
+            Write-Host "Archivos copiados exitosamente" -ForegroundColor Green
         }
     } else {
         Write-Host "No hay permisos para crear enlaces simbólicos. Usando sistema de copias..." -ForegroundColor Red
+
+        # Crear directorio current si no existe
+        if (!(Test-Path $currentDir)) {
+            New-Item -ItemType Directory -Path $currentDir -Force | Out-Null
+        }
+
+        # Limpiar directorio current
+        Get-ChildItem -Path $currentDir | Remove-Item -Recurse -Force
+
         Write-Host "Copiando archivos de Node.js $Version..." -ForegroundColor Cyan
 
-        # Fallback: Copiar archivos (método actual)
+        # Copiar archivos (método alternativo)
         $items = Get-ChildItem -Path $versionDir
         foreach ($item in $items) {
             $targetPath = Join-Path $currentDir $item.Name
@@ -144,6 +156,8 @@ function Set-NvmSymlinks {
                 Copy-Item -Path $sourcePath -Destination $targetPath -Force
             }
         }
+
+        Write-Host "Archivos copiados exitosamente" -ForegroundColor Green
     }
 }
 
@@ -212,12 +226,12 @@ function Migrate-ToSymlinks {
             Set-NvmSymlinks $currentVersion
 
             # Verificar que los enlaces se crearon correctamente
-            $symlinks = Get-ChildItem -Path "$NVM_DIR\current" | Where-Object { $_.LinkType -eq "SymbolicLink" }
-            if ($symlinks.Count -gt 0) {
+            $currentItem = Get-Item "$NVM_DIR\current" -ErrorAction SilentlyContinue
+            if ($currentItem -and $currentItem.LinkType -eq "SymbolicLink") {
                 Write-Host "✅ Migración completada exitosamente!" -ForegroundColor Green
-                Write-Host "Ahora usando enlaces simbólicos: $($symlinks.Count) archivos/directorios" -ForegroundColor Green
+                Write-Host "Ahora usando enlace simbólico: $NVM_DIR\current -> $($currentItem.Target)" -ForegroundColor Green
             } else {
-                Write-Host "Los enlaces simbólicos no se crearon correctamente. Usando sistema de copias." -ForegroundColor Red
+                Write-Host "El enlace simbólico no se creó correctamente. Usando sistema de copias." -ForegroundColor Red
             }
         }
         catch {
@@ -276,16 +290,29 @@ function Get-NvmSymlinkStatus {
         return
     }
 
+    # Verificar si current es un enlace simbólico
+    $currentItem = Get-Item $currentDir -ErrorAction SilentlyContinue
+    $isCurrentSymlink = $currentItem -and $currentItem.LinkType -eq "SymbolicLink"
+
+    if ($isCurrentSymlink) {
+        Write-Host "Estado del directorio current:" -ForegroundColor Cyan
+        Write-Host "  [LINK] Directorio current es un enlace simbólico" -ForegroundColor Green
+        Write-Host "  [TARGET] Apunta a: $($currentItem.Target)" -ForegroundColor Green
+        Write-Host "  [FAST] Cambios de versión instantáneos activados" -ForegroundColor Green
+        return
+    }
+
+    # Si no es un enlace simbólico, verificar archivos individuales (modo compatibilidad)
     $items = Get-ChildItem -Path $currentDir
     $symlinks = $items | Where-Object { $_.LinkType -eq "SymbolicLink" }
     $regularFiles = $items | Where-Object { $_.LinkType -ne "SymbolicLink" -and -not $_.PSIsContainer }
     $directories = $items | Where-Object { $_.PSIsContainer }
 
     Write-Host "Estado del directorio current:" -ForegroundColor Cyan
-    Write-Host "  📂 Total de elementos: $($items.Count)" -ForegroundColor Cyan
-    Write-Host "  🔗 Enlaces simbólicos: $($symlinks.Count)" -ForegroundColor Green
-    Write-Host "  📄 Archivos regulares: $($regularFiles.Count)" -ForegroundColor Yellow
-    Write-Host "  📁 Directorios: $($directories.Count)" -ForegroundColor Magenta
+    Write-Host "  [DIR] Total de elementos: $($items.Count)" -ForegroundColor Cyan
+    Write-Host "  [LINK] Enlaces simbolicos: $($symlinks.Count)" -ForegroundColor Green
+    Write-Host "  [FILE] Archivos regulares: $($regularFiles.Count)" -ForegroundColor Yellow
+    Write-Host "  [FOLDER] Directorios: $($directories.Count)" -ForegroundColor Magenta
 
     if ($symlinks.Count -gt 0) {
         Write-Host ""

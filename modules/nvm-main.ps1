@@ -32,15 +32,19 @@ function Test-NvmInstallation {
     # Verificar enlaces simbólicos
     $currentDir = "$NVM_DIR\current"
     if (Test-Path $currentDir) {
-        $symlinks = Get-ChildItem -Path $currentDir | Where-Object { $_.LinkType -eq "SymbolicLink" }
-        if ($symlinks.Count -gt 0) {
-            Format-NvmInfoMessage -Message "Enlaces simbólicos creados: $($symlinks.Count) archivos" -Type "success"
+        $currentItem = Get-Item $currentDir -ErrorAction SilentlyContinue
+        if ($currentItem -and $currentItem.LinkType -eq "SymbolicLink") {
+            Format-NvmInfoMessage -Message "Enlace simbólico creado: $currentDir -> $($currentItem.Target)" -Type "success"
+        } else {
+            # Verificar enlaces individuales (modo compatibilidad)
+            $symlinks = Get-ChildItem -Path $currentDir | Where-Object { $_.LinkType -eq "SymbolicLink" }
+            if ($symlinks.Count -gt 0) {
+                Format-NvmInfoMessage -Message "Enlaces simbólicos creados: $($symlinks.Count) archivos" -Type "success"
+            } else {
+                Format-NvmInfoMessage -Message "No hay enlaces simbólicos en $currentDir" -Type "warning"
+            }
         }
-        else {
-            Format-NvmInfoMessage -Message "No hay enlaces simbólicos en $currentDir" -Type "warning"
-        }
-    }
-    else {
+    } else {
         Format-NvmInfoMessage -Message "Directorio current no existe" -Type "warning"
     }
 
@@ -63,7 +67,7 @@ function Show-NvmStats {
     $remoteVersions = Get-NvmVersionsWithCache
 
     $stats = @{
-        "Versión actual" = $currentVersion ? $currentVersion : "Ninguna"
+        "Versión actual" = if ($currentVersion) { $currentVersion } else { "Ninguna" }
         "Versiones instaladas" = $installedVersions.Count
         "Versiones LTS disponibles" = ($remoteVersions | Where-Object { $_.lts }).Count
         "Total versiones remotas" = $remoteVersions.Count
@@ -98,8 +102,8 @@ function Migrate-NvmInstallation {
 
         Write-Output "Migración completada exitosamente"
     }
-    else {
-        Write-NvmError "No se pudo determinar la versión actual"
+    catch {
+        Write-NvmError "Error durante la migración: $($_.Exception.Message)"
     }
 }
 
@@ -344,7 +348,7 @@ function Invoke-NvmMain {
                     }
 
                     Write-Host "Remote versions:" -ForegroundColor Cyan
-                    Write-Host "  (✓ installed, ✗ not installed, LTS name shown for LTS versions)" -ForegroundColor Gray
+                    Write-Host "  (OK installed, NO not installed, LTS name shown for LTS versions)" -ForegroundColor Gray
                     Write-Host ""
 
                     foreach ($version in $remoteVersions) {
@@ -352,7 +356,11 @@ function Invoke-NvmMain {
                         $isInstalled = $installedArray -contains $versionNumber
 
                         # Determinar el indicador
-                        $indicator = if ($isInstalled) { "✓" } else { "✗" }
+                        if ($isInstalled) {
+                            $indicator = "[OK]"
+                        } else {
+                            $indicator = "[NO]"
+                        }
 
                         # Determinar el nombre LTS
                         $ltsInfo = ""
@@ -385,7 +393,7 @@ function Invoke-NvmMain {
                     }
 
                     Write-Host "Remote versions:" -ForegroundColor Cyan
-                    Write-Host "  (✓ installed, ✗ not installed, LTS name shown for LTS versions)" -ForegroundColor Gray
+                    Write-Host "  ([OK] installed, [NO] not installed, LTS name shown for LTS versions)" -ForegroundColor Gray
                     Write-Host ""
 
                     foreach ($version in $remoteVersions | Select-Object -First 20) {
@@ -393,7 +401,11 @@ function Invoke-NvmMain {
                         $isInstalled = $installedArray -contains $versionNumber
 
                         # Determinar el indicador
-                        $indicator = if ($isInstalled) { "✓" } else { "✗" }
+                        if ($isInstalled) {
+                            $indicator = "[OK]"
+                        } else {
+                            $indicator = "[NO]"
+                        }
 
                         # Determinar el nombre LTS
                         $ltsInfo = ""
@@ -662,4 +674,46 @@ function Get-NvmrcVersionForHook {
         }
     }
     return $null
+}
+
+# Función para mostrar información del sistema NVM
+function Show-NvmDoctor {
+    Write-Host "=== NVM Doctor ===" -ForegroundColor Cyan
+    Write-Host ""
+
+    # Verificar NVM_DIR
+    if ($env:NVM_DIR) {
+        Write-Host "NVM_DIR: $env:NVM_DIR" -ForegroundColor Green
+        if (Test-Path $env:NVM_DIR) {
+            Write-Host "Estado: Directorio existe" -ForegroundColor Green
+        } else {
+            Write-Host "Estado: Directorio NO existe" -ForegroundColor Red
+        }
+    } else {
+        Write-Host "NVM_DIR: No configurado" -ForegroundColor Red
+    }
+
+    # Verificar PATH
+    $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    $currentBin = "$env:NVM_DIR\current"
+    if ($currentPath -like "*$currentBin*") {
+        Write-Host "PATH: Configurado correctamente" -ForegroundColor Green
+    } else {
+        Write-Host "PATH: No configurado" -ForegroundColor Red
+    }
+
+    # Verificar versiones instaladas
+    if (Test-Path $env:NVM_DIR) {
+        $versions = Get-ChildItem -Path $env:NVM_DIR -Directory -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -match '^v\d+\.\d+\.\d+$' } |
+            Select-Object -ExpandProperty Name
+
+        Write-Host "Versiones instaladas: $($versions.Count)" -ForegroundColor Yellow
+        if ($versions.Count -gt 0) {
+            Write-Host "Lista: $($versions -join ', ')" -ForegroundColor Yellow
+        }
+    }
+
+    Write-Host ""
+    Write-Host "=== Fin del diagnostico ===" -ForegroundColor Cyan
 }

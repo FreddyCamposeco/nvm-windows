@@ -420,7 +420,11 @@ function Show-NvmVersions {
     Write-Host ""
 
     # Define total width based on compact mode
-    $totalWidth = $Compact ? 20 : 27
+    if ($Compact) {
+        $totalWidth = 20
+    } else {
+        $totalWidth = 27
+    }
 
     # Show system version if exists
     $systemVersion = Get-NvmSystemVersion
@@ -556,16 +560,16 @@ function Format-NvmInfoMessage {
 
     switch ($Type) {
         'info' {
-            Write-NvmColoredText "ℹ️ $Message" "c"
+            Write-NvmColoredText "INFO $Message" "c"
         }
         'success' {
-            Write-NvmColoredText "✅ $Message" "Green"
+            Write-NvmColoredText "OK $Message" "Green"
         }
         'warning' {
-            Write-NvmColoredText "⚠️ $Message" "y"
+            Write-NvmColoredText "WARN $Message" "y"
         }
         'error' {
-            Write-NvmColoredText "❌ $Message" "r"
+            Write-NvmColoredText "ERROR $Message" "r"
         }
     }
 }
@@ -809,10 +813,10 @@ function Format-NvmVersionLine {
         [bool]$IsCurrent = $false,
 
         [Parameter(Mandatory = $false)]
-        [string]$LtsName = "",
+        [string]$LtsName,
 
         [Parameter(Mandatory = $false)]
-        [bool]$HasUpdate = $false,
+        [bool]$HasUpdate,
 
         [Parameter(Mandatory = $false)]
         [switch]$Compact

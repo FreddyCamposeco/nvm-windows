@@ -8,13 +8,13 @@ function Write-InstallMessage {
     param([string]$Message, [string]$Type = "info")
 
     $icon = switch ($Type) {
-        "success" { "✅" }
-        "error" { "❌" }
-        "warning" { "⚠️" }
-        default { "ℹ️" }
+        "success" { "OK" }
+        "error" { "ERROR" }
+        "warning" { "WARN" }
+        default { "INFO" }
     }
 
-    Write-Host "$icon $Message"
+    Write-Host "[$icon] $Message"
 }
 
 function Install-Nvm {
@@ -25,6 +25,9 @@ function Install-Nvm {
     if (-not $NvmDir) {
         $NvmDir = "$env:USERPROFILE\.nvm"
     }
+
+    # SIEMPRE configurar NVM_DIR como variable de entorno persistente
+    Set-NvmEnvironmentVariable -Name "NVM_DIR" -Value $NvmDir -Description "Directorio de instalación de nvm-windows"
 
     Write-InstallMessage "Directorio de instalación: $NvmDir"
 
@@ -40,9 +43,14 @@ function Install-Nvm {
     } else {
         $null
     }
-    if (-not $ScriptDir -or $ScriptDir -eq $null) {
+
+    # Si no se puede determinar el directorio del script, intentar usar el directorio actual
+    if (-not $ScriptDir -or -not (Test-Path $ScriptDir)) {
         $ScriptDir = Get-Location
+        Write-InstallMessage "Usando directorio actual como fuente: $ScriptDir" "warning"
     }
+
+    Write-InstallMessage "Directorio fuente: $ScriptDir"
 
     $filesToCopy = @("nvm.ps1", "nvm.cmd", "nvm-wrapper.cmd")
 
@@ -69,6 +77,14 @@ function Install-Nvm {
 
     # Configurar alias en perfil de PowerShell
     $profilePath = $PROFILE
+
+    # Crear directorio del perfil si no existe
+    $profileDir = Split-Path -Parent $profilePath
+    if (-not (Test-Path $profileDir)) {
+        New-Item -ItemType Directory -Path $profileDir -Force | Out-Null
+        Write-InstallMessage "Directorio del perfil creado: $profileDir"
+    }
+
     $nvmAlias = "Set-Alias nvm `"$NvmDir\nvm.ps1`""
 
     # Leer perfil actual
@@ -90,7 +106,7 @@ function Install-Nvm {
 
     # Agregar al PATH si no está
     $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
-    $currentBin = "$NvmDir\current\bin"
+    $currentBin = "$NvmDir\current"  # Ejecutables están en el directorio raíz, no en \bin
 
     if ($currentPath -notlike "*$([regex]::Escape($currentBin))*") {
         $newPath = "$currentPath;$currentBin"
@@ -119,6 +135,14 @@ function Install-Nvm {
             Write-InstallMessage "Instalación de Node.js LTS omitida. Puedes instalarlo manualmente con: nvm install lts" "info"
         }
     }
+
+    # Configurar variables de entorno opcionales
+    if ($NoColor) {
+        Set-NvmEnvironmentVariable -Name "NVM_NO_COLOR" -Value "1" -Description "Deshabilita colores en la salida de nvm"
+    }
+    if ($Colors) {
+        Set-NvmEnvironmentVariable -Name "NVM_COLORS" -Value $Colors -Description "Configura colores personalizados para nvm"
+    }
 }
 
 function Uninstall-Nvm {
@@ -130,21 +154,25 @@ function Uninstall-Nvm {
         $NvmDir = "$env:USERPROFILE\.nvm"
     }
 
-    # Preguntar si eliminar versiones instaladas ANTES de limpiar otras configuraciones
-    $deleteVersions = Read-Host "¿Eliminar todas las versiones instaladas de Node.js? (s/n)"
-    $shouldDeleteVersions = ($deleteVersions -eq "s" -or $deleteVersions -eq "S")
+    # PRIMERO: Limpiar configuraciones del sistema (antes de eliminar archivos)
+    Write-InstallMessage "Limpiando configuraciones del sistema..."
 
-    # Remover del PATH (antes de eliminar el directorio)
+    # Remover del PATH
     $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
-    $currentBin = "$NvmDir\current\bin"
+    $currentBin = "$NvmDir\current"  # Ejecutables están en el directorio raíz, no en \bin
     if ($currentPath -like "*$currentBin*") {
         $escapedBin = [regex]::Escape($currentBin)
-        $newPath = $currentPath -replace ";$escapedBin", "" -replace "$escapedBin;", ""
+        $newPath = $currentPath -replace (";$escapedBin", "") -replace ("$escapedBin;", "")
         [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
         Write-InstallMessage "Removido del PATH"
     } else {
         Write-InstallMessage "No se encontró entrada en PATH"
     }
+
+    # Remover variables de entorno relacionadas con NVM
+    Remove-NvmEnvironmentVariable "NVM_DIR"
+    Remove-NvmEnvironmentVariable "NVM_NO_COLOR"
+    Remove-NvmEnvironmentVariable "NVM_COLORS"
 
     # Remover alias del perfil
     $profilePath = $PROFILE
@@ -168,7 +196,13 @@ function Uninstall-Nvm {
         }
 
         $profileContent | Out-File -FilePath $profilePath -Encoding UTF8 -Force
+    } else {
+        Write-InstallMessage "Perfil de PowerShell no encontrado"
     }
+
+    # SEGUNDO: Preguntar si eliminar versiones instaladas (DESPUÉS de limpiar configuraciones)
+    $deleteVersions = Read-Host "¿Eliminar todas las versiones instaladas de Node.js? (s/n)"
+    $shouldDeleteVersions = ($deleteVersions -eq "s" -or $deleteVersions -eq "S")
 
     # Eliminar archivos/directorios según la selección del usuario
     if ($shouldDeleteVersions) {
@@ -196,6 +230,43 @@ function Uninstall-Nvm {
 
     Write-InstallMessage "Desinstalación completada!" "success"
     Write-InstallMessage "Reinicia PowerShell para que los cambios tomen efecto" "warning"
+}
+
+# Función para configurar variables de entorno de manera persistente
+# Uso: Set-NvmEnvironmentVariable -Name "NVM_DIR" -Value "C:\Users\User\.nvm" -Description "Directorio de instalación de nvm-windows"
+function Set-NvmEnvironmentVariable {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$Name,
+        [Parameter(Mandatory=$true)]
+        [string]$Value,
+        [string]$Description = ""
+    )
+
+    $currentValue = [Environment]::GetEnvironmentVariable($Name, "User")
+    if ($currentValue -ne $Value) {
+        [Environment]::SetEnvironmentVariable($Name, $Value, "User")
+        if ($Description) {
+            $message = "Variable de entorno $Name configurada: $Description"
+        } else {
+            $message = "Variable de entorno $Name configurada: $Value"
+        }
+        Write-InstallMessage $message
+    } else {
+        Write-InstallMessage "Variable de entorno $Name ya está configurada correctamente"
+    }
+}
+
+# Función para eliminar variables de entorno de manera persistente
+# Uso: Remove-NvmEnvironmentVariable "NVM_DIR"
+function Remove-NvmEnvironmentVariable {
+    param([string]$Name)
+
+    $currentValue = [Environment]::GetEnvironmentVariable($Name, "User")
+    if ($currentValue) {
+        [Environment]::SetEnvironmentVariable($Name, $null, "User")
+        Write-InstallMessage "Variable de entorno $Name eliminada"
+    }
 }
 
 # Main logic
