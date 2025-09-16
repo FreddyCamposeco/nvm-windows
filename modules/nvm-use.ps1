@@ -73,24 +73,27 @@ function Set-NvmSymlinks {
     param([string]$Version)
 
     $currentDir = "$NVM_DIR\current"
+    $currentBinDir = "$NVM_DIR\current\bin"
     $versionDir = "$NVM_DIR\$Version"
 
-    # Crear directorio current si no existe
-    if (!(Test-Path $currentDir)) {
-        New-Item -ItemType Directory -Path $currentDir -Force | Out-Null
+    # Crear directorio current\bin si no existe
+    if (!(Test-Path $currentBinDir)) {
+        New-Item -ItemType Directory -Path $currentBinDir -Force | Out-Null
     }
 
-    # Eliminar enlaces simbólicos existentes
-    Get-ChildItem -Path $currentDir | ForEach-Object {
-        if ($_.LinkType -eq "SymbolicLink") {
-            Remove-Item $_.FullName -Force
+    # Eliminar enlaces simbólicos existentes en current\bin
+    if (Test-Path $currentBinDir) {
+        Get-ChildItem -Path $currentBinDir | ForEach-Object {
+            if ($_.LinkType -eq "SymbolicLink") {
+                Remove-Item $_.FullName -Force
+            }
         }
     }
 
-    # Crear nuevos enlaces simbólicos
+    # Crear nuevos enlaces simbólicos en current\bin
     $items = Get-ChildItem -Path $versionDir
     foreach ($item in $items) {
-        $targetPath = Join-Path $currentDir $item.Name
+        $targetPath = Join-Path $currentBinDir $item.Name
         $sourcePath = $item.FullName
 
         # Crear enlace simbólico

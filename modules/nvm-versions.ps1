@@ -836,6 +836,8 @@ function Format-NvmVersionLine {
     # Column 27: Installation indicator
     if ($IsInstalled) {
         Write-NvmColoredText "✓" "G"
+    } elseif ($Type -eq 'nvmrc') {
+        Write-NvmColoredText "X" "R"
     } else {
         Write-Host " "
     }

@@ -118,21 +118,36 @@ nvm ls-remote
 ### Instalación Automática (Recomendada)
 
 ```powershell
-# Descarga e instala automáticamente
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/FreddyCamposeco/nvm-windows/master/install-nvm.ps1" -OutFile "install-nvm.ps1"
-.\install-nvm.ps1
-```
-
-**Nota**: El instalador preguntará si quieres instalar automáticamente la versión LTS de Node.js.
-
-## Instalación Manual
-
-```bash
 # Clona el repositorio
 git clone https://github.com/FreddyCamposeco/nvm-windows.git
 cd nvm-windows
 
-# Ejecuta la instalación
+# Ejecuta la instalación automática
+.\install-nvm.ps1
+```
+
+**Características de la instalación automática:**
+
+- ✅ Instala nvm-windows en `%USERPROFILE%\.nvm`
+- ✅ Configura alias en el perfil de PowerShell
+- ✅ Actualiza el PATH del usuario
+- ✅ Instala automáticamente Node.js LTS
+- ✅ Crea estructura de directorios necesaria
+
+### Instalación Manual
+
+Si prefieres instalar manualmente:
+
+```powershell
+# Clona el repositorio
+git clone https://github.com/FreddyCamposeco/nvm-windows.git
+cd nvm-windows
+
+# Instala sin Node.js LTS
+.\install-nvm.ps1 -SkipLtsInstall
+
+# O instala desde cualquier ubicación
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/FreddyCamposeco/nvm-windows/master/install-nvm.ps1" -OutFile "install-nvm.ps1"
 .\install-nvm.ps1
 ```
 
@@ -143,6 +158,22 @@ cd nvm-windows
 nvm doctor
 
 # Deberías ver: ✅ Instalación correcta
+```
+
+### Primeros Pasos
+
+```powershell
+# Ver versiones disponibles
+nvm ls
+
+# Instalar una versión específica
+nvm install 20.19.5
+
+# Cambiar a una versión
+nvm use 20.19.5
+
+# Verificar versión activa
+node --version
 ```
 
 ## 🚀 Uso Rápido
@@ -521,6 +552,15 @@ nvm cleanup
 
 ## 🗑️ Desinstalación
 
+### Desinstalación Local
+
+Si tienes el repositorio clonado:
+
+```powershell
+# Ejecuta la desinstalación
+.\install-nvm.ps1 -Uninstall
+```
+
 ### Desinstalación Remota (Sin Clonar)
 
 Para desinstalar nvm-windows sin clonar el repositorio:
@@ -531,23 +571,6 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/FreddyCamposeco/nvm-wi
 
 # Ejecuta la desinstalación
 .\uninstall-nvm.ps1 -Uninstall
-```
-
-**El proceso de desinstalación:**
-
-- ✅ Remueve nvm del PATH del usuario y sistema
-- ✅ Elimina archivos principales (`nvm.ps1`, `nvm.cmd`)
-- ✅ Remueve alias del perfil de PowerShell
-- ✅ Pregunta si quieres eliminar versiones instaladas
-- ✅ Limpieza completa del directorio si está vacío
-
-### Desinstalación Local
-
-Si tienes el repositorio clonado:
-
-```powershell
-# Ejecuta la desinstalación
-.\install-nvm.ps1 -Uninstall
 ```
 
 ### Verificación de Desinstalación

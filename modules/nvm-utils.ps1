@@ -104,23 +104,22 @@ function Write-NvmColoredText {
 
 # Función para parsear argumentos
 function Parse-NvmArguments {
-    # Use automatic $args variable instead of parameter
-    $Command = if ($args -and $args.Length -gt 0) { $args[0] } else { $null }
+    param([string[]]$Arguments)
 
-    if ($args -and $args.Length -gt 1) {
+    $Command = if ($Arguments -and $Arguments.Length -gt 0) { $Arguments[0] } else { $null }
+    $Version = $null
+    $RemainingArgs = @()
+
+    if ($Arguments -and $Arguments.Length -gt 1) {
         # Si el segundo argumento parece una opción (empieza con -), no es una versión
-        if ($args[1] -like "-*") {
+        if ($Arguments[1] -like "-*") {
             $Version = $null
-            $RemainingArgs = $args[1..($args.Length - 1)]
+            $RemainingArgs = $Arguments[1..($Arguments.Length - 1)]
         }
         else {
-            $Version = $args[1]
-            $RemainingArgs = if ($args.Length -gt 2) { $args[2..($args.Length - 1)] } else { @() }
+            $Version = $Arguments[1]
+            $RemainingArgs = if ($Arguments.Length -gt 2) { $Arguments[2..($Arguments.Length - 1)] } else { @() }
         }
-    }
-    else {
-        $Version = $null
-        $RemainingArgs = @()
     }
 
     return @{
