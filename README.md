@@ -213,6 +213,47 @@ nvm cleanup
 | `nvm set-colors <esquema>` | Configura colores                    | `nvm set-colors bygre` |
 | `nvm help`                 | Muestra ayuda completa               | `nvm help`             |
 
+## 🧪 Testing y Validación
+
+nvm-windows incluye una **suite completa de tests automatizados** para verificar la integridad del proyecto:
+
+```powershell
+# Ejecutar todos los tests
+.\nvm.tests.ps1
+
+# Ejecutar con output detallado
+.\nvm.tests.ps1 -Verbose
+
+# Ejecutar tests específicos
+.\nvm.tests.ps1 -TestNames "Sintaxis", "Comandos"
+```
+
+### Tests Incluidos (13 tests)
+
+**Verificación de Sintaxis:**
+
+- ✅ Sintaxis de `nvm.ps1`
+- ✅ Sintaxis de todos los módulos
+
+**Tests de Comandos:**
+
+- ✅ Comando `help`
+- ✅ Manejo de comandos desconocidos
+- ✅ Comando `doctor`
+- ✅ Comando `ls`
+- ✅ Comando `current`
+
+**Tests de Utilidades:**
+
+- ✅ Existencia de archivos requeridos (`.nvmrc`, `LICENSE`, `README.md`)
+- ✅ Estructura de directorios
+- ✅ Módulos requeridos
+
+**Códigos de Salida:**
+
+- `0`: Todos los tests pasaron ✅
+- `1`: Algunos tests fallaron ❌
+
 ## 🎨 Formato Mejorado de Salida
 
 nvm-windows v2.3 incluye un formato de salida compacto e informativo inspirado en nvm.fish, con **colores configurables** para una mejor experiencia visual:
@@ -583,7 +624,7 @@ nvm-windows/
 │   ├── nvm-use.ps1      # Cambio de versiones activas
 │   ├── nvm-aliases.ps1  # Gestión de aliases
 │   └── nvm-main.ps1     # Lógica principal y comandos
-├── nvm.tests.ps1        # Suite completa de tests (17 tests)
+├── nvm.tests.ps1        # Suite completa de tests (13 tests)
 ├── install-nvm.ps1      # Instalador avanzado con desinstalación
 ├── nvm.cmd              # Wrapper para Command Prompt
 ├── nvm-wrapper.cmd      # Wrapper adicional para compatibilidad
