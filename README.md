@@ -1,6 +1,6 @@
 # nvm-windows v2.4-beta 🚀
 
-> Node Versi- 🛡️ **Sistema de Enlaces Simbólicos**: Gestión de versiones sin manipulación de PATH
+> Node Version Manager para Windows nativo con PowerShell
 
 - 🛡️ **Manejo Robusto de Errores**: Validación completa y mensajes informativos Manager para Windows nativo con PowerShell
 
@@ -26,7 +26,7 @@
 [![Versión](https://img.shields.io/badge/Versi%C3%B3n-2.4--beta-blue.svg)](https://github.com/FreddyCamposeco/nvm-windows)
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1+-blue.svg)](https://github.com/PowerShell/PowerShell)
 
-Una adaptación completa de [nvm](https://github.com/nvm-sh/nvm) para Windows nativo, con mejoras inspiradas en [nvm.fish](https://github.com/jorgebucaran/nvm.fish). Ofrece una experiencia de línea de comandos elegante y potente para gestionar múltiples versiones de Node.js.
+Una adaptación completa de [nvm](https://github.com/nvm-sh/nvm) para Windows n
 
 ## ✨ Características Principales
 
@@ -161,9 +161,8 @@ nvm use lts
 # Ver todas las versiones disponibles
 nvm ls
 
-# Instalar versiones adicionales si necesitas
-nvm install latest
-nvm install 20.19.5
+# Limpiar versiones antiguas
+nvm cleanup
 ```
 
 ## 📋 Comandos Disponibles
@@ -195,8 +194,8 @@ nvm install 20.19.5
 | -------------------------- | ------------------------------------ | ---------------------- |
 | `nvm doctor`               | Verifica instalación                 | `nvm doctor`           |
 | `nvm migrate`              | Migra al sistema de enlaces simbólicos | `nvm migrate`          |
-| `nvm cleanup`              | Elimina versiones no actuales ni LTS | `nvm cleanup`          |
 | `nvm self-update`          | Actualiza nvm-windows                | `nvm self-update`      |
+| `nvm cleanup`              | Elimina versiones innecesarias (mantiene actual y LTS) | `nvm cleanup`          |
 | `nvm set-default <versión>`| Establece versión por defecto        | `nvm set-default lts`  |
 | `nvm set-colors <esquema>` | Configura colores                    | `nvm set-colors bygre` |
 | `nvm help`                 | Muestra ayuda completa               | `nvm help`             |
@@ -206,24 +205,24 @@ nvm install 20.19.5
 nvm-windows v2.3 incluye un formato de salida compacto e informativo inspirado en nvm.fish, con **colores configurables** para una mejor experiencia visual:
 
 ```powershell
-→ global:       v22.15.0     ✓
+→ global:       v22.19.0     ✓
   latest:       v24.8.0      ✓
   lts/argon:    v4.9.1       ✓
   lts/boron:    v6.17.1      ✓
   lts/carbon:   v8.17.0      ✓
   lts/dubnium:  v10.24.1     ✓
-  lts/erbium:   v12.22.9     ✓
+  lts/erbium:   v12.22.12    ✓
   lts/fermium:  v14.21.3     ✓
   lts/gallium:  v16.20.2     ✓
   lts/hydrogen: v18.20.8     ✓
   lts/iron:     v20.19.5     ✓
-▶ lts/jod:      v22.15.0     ✓
-ϟ .nvmrc:       v20.19.5     ✓
+▶ lts/jod:      v22.19.0     ✓
+ϟ .nvmrc:       v18.19.0     ✓
 
 Available (non-LTS):
   v24.x:        v24.8.0      ✓
   v23.x:        v23.9.0      ✓
-  v22.x:        v22.15.0     ✓
+  v22.x:        v22.19.0     ✓
   v21.x:        v21.11.0     ✓
   v20.x:        v20.19.5     ✓
 ```
@@ -518,7 +517,7 @@ nvm cleanup
 # Responde 'y' para proceder
 ```
 
-**Nota**: La limpieza preserva la versión actualmente activa y la LTS más reciente por seguridad.
+**Nota**: La limpieza preserva la versión actualmente activa y todas las versiones LTS instaladas por seguridad.
 
 ## 🗑️ Desinstalación
 
@@ -591,7 +590,15 @@ Después de la limpieza v2.4-beta, el repositorio contiene solo los archivos ese
 
 ```text
 nvm-windows/
-├── nvm.ps1              # Script principal de PowerShell con sistema de enlaces simbólicos
+├── nvm.ps1              # Script principal modular de PowerShell
+├── modules/             # Arquitectura modular
+│   ├── nvm-config.ps1   # Configuración global y variables
+│   ├── nvm-utils.ps1    # Funciones auxiliares y parsing
+│   ├── nvm-versions.ps1 # Gestión de versiones de Node.js
+│   ├── nvm-install.ps1  # Instalación y desinstalación
+│   ├── nvm-use.ps1      # Cambio de versiones activas
+│   ├── nvm-aliases.ps1  # Gestión de aliases
+│   └── nvm-main.ps1     # Lógica principal y comandos
 ├── nvm.tests.ps1        # Suite completa de tests (17 tests)
 ├── install-nvm.ps1      # Instalador avanzado con desinstalación
 ├── nvm.cmd              # Wrapper para Command Prompt
