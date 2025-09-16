@@ -3,6 +3,10 @@
 
 <head>
   <meta charset="utf-8" />
+  <!-- jetbrains Noto Sans Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Mono:wght@400&display=swap" rel="stylesheet" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Replica nvm ls</title>
   <style>
@@ -33,7 +37,8 @@
 
     html,
     body {
-      height: 100%
+      height: 100%;
+      font-family: 'Noto Sans Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     }
 
     body {
@@ -230,11 +235,12 @@
           <div class="value grey">v16.20.2</div>
         </div>
         <div class="row">
-          <div class="key lts tag">lts/hydrogen</div>
+          <!-- antes de lts espacio en blanco -->
+          <div class="key lts tag">&nbsp; lts/hydrogen</div>
           <div class="value grey">v18.20.8</div>
         </div>
         <div class="row">
-          <div class="key lts tag">lts/iron</div>
+          <div class="key lts tag">▶ lts/iron</div>
           <div class="value iron">v20.19.5 <span class="badge dim"><span class="icon">*</span></span></div>
         </div>
         <div class="row">
