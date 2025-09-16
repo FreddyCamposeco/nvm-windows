@@ -2,13 +2,18 @@
 
 # Función para cambiar a una versión específica de Node.js
 function Use-Node {
-    param([string]$Version)
+    param(
+        [string]$Version,
+        [switch]$Quiet
+    )
 
     if ([string]::IsNullOrWhiteSpace($Version)) {
         # Buscar .nvmrc
         $nvmrcVersion = Get-NvmrcVersion
         if ($nvmrcVersion) {
-            Write-Output "Encontrado .nvmrc con versión: $nvmrcVersion"
+            if (-not $Quiet) {
+                Write-Output "Encontrado .nvmrc con versión: $nvmrcVersion"
+            }
             $Version = $nvmrcVersion
         }
         else {
@@ -24,7 +29,7 @@ function Use-Node {
     }
 
     # Si la resolución fue diferente, mostrar el alias usado
-    if ($resolvedVersion -ne $Version -and $Version -notmatch '^v?\d+\.\d+\.\d+$') {
+    if ($resolvedVersion -ne $Version -and $Version -notmatch '^v?\d+\.\d+\.\d+$' -and -not $Quiet) {
         Write-Output "Usando alias '$Version' -> '$resolvedVersion'"
     }
 
@@ -35,7 +40,9 @@ function Use-Node {
             $fileAliasVersion = Get-Content $aliasPath -Raw -Encoding UTF8 | ForEach-Object { $_.Trim() }
             if ($fileAliasVersion -and $fileAliasVersion -ne $Version) {
                 $resolvedVersion = $fileAliasVersion
-                Write-Output "Usando alias guardado '$Version' -> '$resolvedVersion'"
+                if (-not $Quiet) {
+                    Write-Output "Usando alias guardado '$Version' -> '$resolvedVersion'"
+                }
             }
         }
         catch {
@@ -53,6 +60,10 @@ function Use-Node {
     # Crear enlaces simbólicos en lugar de modificar PATH
     try {
         Set-NvmSymlinks $resolvedVersion
+
+        if (-not $Quiet) {
+            Write-Output "Ahora usando Node.js $resolvedVersion"
+        }
     }
     catch {
         Write-NvmError "Error al crear enlaces simbólicos: $($_.Exception.Message)"
@@ -64,8 +75,6 @@ function Use-Node {
 
     # Guardar la versión activa para persistencia entre sesiones
     Set-NvmActiveVersion $resolvedVersion
-
-    Write-Output "Ahora usando Node.js $resolvedVersion"
 }
 
 # Función para crear enlaces simbólicos para la versión activa
