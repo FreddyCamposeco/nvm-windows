@@ -237,7 +237,7 @@ function Invoke-NvmMain {
     )
 
     # Parsear argumentos usando la función del módulo utils
-    $parsedArgs = Parse-NvmArguments $Args
+    $parsedArgs = Parse-NvmArguments -Arguments $Args
     $Command = $parsedArgs.Command
     $Version = $parsedArgs.Version
     $RemainingArgs = $parsedArgs.RemainingArgs

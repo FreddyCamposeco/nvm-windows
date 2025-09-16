@@ -35,7 +35,11 @@ function Install-Nvm {
     }
 
     # Copiar archivos principales
-    $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+    $ScriptDir = if ($MyInvocation.MyCommand.Path) {
+        Split-Path -Parent $MyInvocation.MyCommand.Path
+    } else {
+        $null
+    }
     if (-not $ScriptDir -or $ScriptDir -eq $null) {
         $ScriptDir = Get-Location
     }
