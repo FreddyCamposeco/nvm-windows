@@ -589,6 +589,20 @@ Si tienes el repositorio clonado:
 .\install-nvm.ps1 -Uninstall
 ```
 
+> ⚠️ **IMPORTANTE:**
+>
+> Para eliminar completamente nvm-windows y todos sus rastros del sistema, **siempre utiliza el desinstalador oficial** (`install-nvm.ps1 -Uninstall`).
+>
+> - No elimines manualmente archivos ni edites tu perfil de PowerShell a mano.
+> - El desinstalador limpia automáticamente:
+>   - Alias y referencias en el perfil de PowerShell (incluso si están al final del archivo o sin salto de línea)
+>   - Variables de entorno (`NVM_DIR`, `NVM_COLORS`, `NVM_NO_COLOR`)
+>   - Entradas en el PATH de usuario
+>   - Archivos principales de nvm-windows
+> - Si lo deseas, puedes eliminar también todas las versiones de Node.js instaladas cuando el script te lo pregunte.
+>
+> Usar el desinstalador garantiza que tu entorno quede **limpio y sin conflictos** para futuras instalaciones o para otros gestores de versiones.
+
 ### Desinstalación Remota (Sin Clonar)
 
 Para desinstalar nvm-windows sin clonar el repositorio:
