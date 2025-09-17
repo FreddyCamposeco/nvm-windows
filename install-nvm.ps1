@@ -119,7 +119,11 @@ function Install-Nvm {
 
     # Preguntar si se desea instalar Node.js LTS
     if (-not $SkipLtsInstall) {
-        $installLts = Read-Host "¿Deseas instalar Node.js LTS automáticamente? (s/n)"
+        $defaultLts = 'n'
+        try {
+            $installLts = Read-Host "¿Deseas instalar Node.js LTS automáticamente? (s/n) [n]"
+        } catch { $installLts = $defaultLts }
+        if ([string]::IsNullOrWhiteSpace($installLts)) { $installLts = $defaultLts }
         if ($installLts -eq "s" -or $installLts -eq "S") {
             Write-InstallMessage "Instalando Node.js LTS automáticamente..."
             try {
@@ -148,7 +152,7 @@ function Install-Nvm {
 function Uninstall-Nvm {
     Write-InstallMessage "Desinstalando nvm-windows..."
 
-    # Determinar directorio de instalación
+                # Remove-NvmEnvironmentVariable "NVM_DEFAULT_VERSION"  # Eliminado para unificar manejo
     $NvmDir = $env:NVM_DIR
     if (-not $NvmDir) {
         $NvmDir = "$env:USERPROFILE\.nvm"
@@ -173,6 +177,7 @@ function Uninstall-Nvm {
     Remove-NvmEnvironmentVariable "NVM_DIR"
     Remove-NvmEnvironmentVariable "NVM_NO_COLOR"
     Remove-NvmEnvironmentVariable "NVM_COLORS"
+    Remove-NvmEnvironmentVariable "NVM_DEFAULT_VERSION"
 
     # Remover alias del perfil
     $profilePath = $PROFILE
@@ -182,24 +187,12 @@ function Uninstall-Nvm {
 
         # Remover cualquier línea de alias nvm y comentarios relacionados (robusto, línea por línea)
         $profileLines = $profileContent -split "\r?\n|\n|\r"
-        $filteredLines = $profileLines | Where-Object { -not ($_ -match '(?i)Set-Alias\s+nvm\s+.*nvm\\.ps1') -and -not ($_ -match '(?i)#.*nvm') }
-        # Limpiar líneas vacías consecutivas y eliminar línea final vacía
-        $cleanedLines = @()
-        $lastWasEmpty = $false
-        foreach ($line in $filteredLines) {
-            if ($line.Trim() -eq "") {
-                if (-not $lastWasEmpty) { $cleanedLines += "" }
-                $lastWasEmpty = $true
-            } else {
-                $cleanedLines += $line
-                $lastWasEmpty = $false
-            }
+        $filteredLines = $profileLines | Where-Object { -not ($_ -match '^\s*Set-Alias\s+nvm\s+.*nvm\\.ps1\s*$') -and -not ($_ -match '^\s*#\s*Alias\s+for\s+nvm-windows\s*$') }
+        # Si la última línea es el alias y no tiene salto de línea, también la elimina
+        if ($filteredLines.Count -gt 0 -and $filteredLines[-1] -match '^\s*Set-Alias\s+nvm\s+.*nvm\\.ps1\s*$') {
+            $filteredLines = $filteredLines[0..($filteredLines.Count-2)]
         }
-        # Eliminar línea vacía final si existe
-        if ($cleanedLines.Count -gt 0 -and $cleanedLines[-1].Trim() -eq "") {
-            $cleanedLines = $cleanedLines[0..($cleanedLines.Count-2)]
-        }
-        $profileContent = $cleanedLines -join "`r`n"
+        $profileContent = $filteredLines -join "`r`n"
 
         # Remover hook de auto-switch
         $hookPattern = "(?s)# NVM Auto-Switch Hook.*?Nvm-AutoSwitch.*?}\r?\n\r?\n# Ejecutar auto-switch.*?\r?\n}"
@@ -215,7 +208,11 @@ function Uninstall-Nvm {
     }
 
     # SEGUNDO: Preguntar si eliminar versiones instaladas (DESPUÉS de limpiar configuraciones)
-    $deleteVersions = Read-Host "¿Eliminar todas las versiones instaladas de Node.js? (s/n)"
+    $defaultDelete = 'n'
+    try {
+        $deleteVersions = Read-Host "¿Eliminar todas las versiones instaladas de Node.js? (s/n) [n]"
+    } catch { $deleteVersions = $defaultDelete }
+    if ([string]::IsNullOrWhiteSpace($deleteVersions)) { $deleteVersions = $defaultDelete }
     $shouldDeleteVersions = ($deleteVersions -eq "s" -or $deleteVersions -eq "S")
 
     # Eliminar archivos/directorios según la selección del usuario
