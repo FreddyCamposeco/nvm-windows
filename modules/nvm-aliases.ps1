@@ -190,7 +190,7 @@ function Set-NvmDefaultVersion {
     }
 
     try {
-        [Environment]::SetEnvironmentVariable("nvm_default_version", $resolvedVersion, "User")
+        [Environment]::SetEnvironmentVariable("NVM_DEFAULT_VERSION", $resolvedVersion, "User")
         Write-Output "Versión por defecto establecida: $resolvedVersion"
     }
     catch {

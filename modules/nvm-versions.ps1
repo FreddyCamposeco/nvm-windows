@@ -365,7 +365,7 @@ function Show-NvmVersions {
     }
 
     # Get default version
-    $defaultVersion = [Environment]::GetEnvironmentVariable("nvm_default_version", "User")
+    $defaultVersion = [Environment]::GetEnvironmentVariable("NVM_DEFAULT_VERSION", "User")
     if ($defaultVersion -and -not $defaultVersion.StartsWith('v')) {
         $defaultVersion = "v$defaultVersion"
     }
