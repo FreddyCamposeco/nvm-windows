@@ -179,14 +179,23 @@ function Uninstall-Nvm {
     if (Test-Path $profilePath) {
         $profileContent = Get-Content $profilePath -Raw
 
-        # Remover alias
-        $aliasPattern = "(?m)^# Alias for nvm-windows\r?\nSet-Alias nvm.*nvm\.ps1\r?\n"
-        if ($profileContent -match $aliasPattern) {
-            $profileContent = $profileContent -replace $aliasPattern, ""
-            Write-InstallMessage "Alias removido del perfil de PowerShell"
-        } else {
-            Write-InstallMessage "Alias no encontrado en el perfil"
+
+        # Remover cualquier línea de alias nvm y comentarios relacionados (robusto, línea por línea)
+        $profileLines = $profileContent -split "\r?\n"
+        $filteredLines = $profileLines | Where-Object { $_ -notmatch '(?i)Set-Alias\s+nvm\s+.*nvm\\.ps1' -and $_ -notmatch '(?i)#.*nvm' }
+        # Limpiar líneas vacías consecutivas
+        $cleanedLines = @()
+        $lastWasEmpty = $false
+        foreach ($line in $filteredLines) {
+            if ($line.Trim() -eq "") {
+                if (-not $lastWasEmpty) { $cleanedLines += "" }
+                $lastWasEmpty = $true
+            } else {
+                $cleanedLines += $line
+                $lastWasEmpty = $false
+            }
         }
+        $profileContent = $cleanedLines -join "`r`n"
 
         # Remover hook de auto-switch
         $hookPattern = "(?s)# NVM Auto-Switch Hook.*?Nvm-AutoSwitch.*?}\r?\n\r?\n# Ejecutar auto-switch.*?\r?\n}"
@@ -196,6 +205,7 @@ function Uninstall-Nvm {
         }
 
         $profileContent | Out-File -FilePath $profilePath -Encoding UTF8 -Force
+        Write-InstallMessage "Alias y comentarios de nvm removidos del perfil de PowerShell"
     } else {
         Write-InstallMessage "Perfil de PowerShell no encontrado"
     }
