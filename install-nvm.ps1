@@ -181,9 +181,9 @@ function Uninstall-Nvm {
 
 
         # Remover cualquier línea de alias nvm y comentarios relacionados (robusto, línea por línea)
-        $profileLines = $profileContent -split "\r?\n"
-        $filteredLines = $profileLines | Where-Object { $_ -notmatch '(?i)Set-Alias\s+nvm\s+.*nvm\\.ps1' -and $_ -notmatch '(?i)#.*nvm' }
-        # Limpiar líneas vacías consecutivas
+        $profileLines = $profileContent -split "\r?\n|\n|\r"
+        $filteredLines = $profileLines | Where-Object { -not ($_ -match '(?i)Set-Alias\s+nvm\s+.*nvm\\.ps1') -and -not ($_ -match '(?i)#.*nvm') }
+        # Limpiar líneas vacías consecutivas y eliminar línea final vacía
         $cleanedLines = @()
         $lastWasEmpty = $false
         foreach ($line in $filteredLines) {
@@ -194,6 +194,10 @@ function Uninstall-Nvm {
                 $cleanedLines += $line
                 $lastWasEmpty = $false
             }
+        }
+        # Eliminar línea vacía final si existe
+        if ($cleanedLines.Count -gt 0 -and $cleanedLines[-1].Trim() -eq "") {
+            $cleanedLines = $cleanedLines[0..($cleanedLines.Count-2)]
         }
         $profileContent = $cleanedLines -join "`r`n"
 
