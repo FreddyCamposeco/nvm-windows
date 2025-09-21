@@ -1,13 +1,15 @@
 # nvm-windows Version Information
 
-## Current Version: v2.5
+## Current Version: v2.5.1
 
-### Release Date: 16 de septiembre de 2025
+### Release Date: 20 de septiembre de 2025
 
-### What's New in v2.5
+### What's New in v2.5.1
 
-- 🧪 **Suite de Tests Organizada**: Tests reorganizados en directorio dedicado `tests/`
-- 🔧 **Gestión Automática de Variables**: Variables de entorno gestionadas automáticamente
+- 🔗 **Sistema de Fallback Robusto**: Tres niveles de enlaces (symlinks → junctions → copias optimizadas)
+- 🚀 **Auto-actualización Inteligente**: Comando `self-update` con comparación semántica de versiones
+- � **Documentación Expandida**: Detalles completos sobre sistema de enlaces y auto-actualización
+- 🛠️ **Mejoras de Compatibilidad**: Funciona en cualquier entorno Windows sin permisos especiales
 - ✅ **Scripts de Verificación Avanzados**: Herramientas completas para validar instalación
 - 🚀 **Rendimiento Mejorado**: Optimizaciones en el sistema de enlaces simbólicos
 - 🛡️ **Mayor Estabilidad**: Corrección de errores de sintaxis y mejoras en robustez
@@ -24,6 +26,7 @@
 ### Version Numbering
 
 This project follows [Semantic Versioning](https://semver.org/):
+
 - **MAJOR**: Breaking changes
 - **MINOR**: New features (backward compatible)
 - **PATCH**: Bug fixes (backward compatible)

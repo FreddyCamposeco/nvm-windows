@@ -1,4 +1,4 @@
-# nvm-windows v2.5 🚀
+# nvm-windows v2.5.1 🚀
 
 > Node Version Manager para Windows nativo con PowerShell
 
@@ -14,7 +14,7 @@
 - 🏠 **Versión por Defecto**: Configura versión automática para nuevas sesiones y auto-cambio
 - 🧹 **Limpieza Automática**: Comando `cleanup` para eliminar versiones innecesarias
 - 🛡️ **Desinstalación Forzada**: Opción `--force` para desinstalar versión activa
-- 🔗 **Sistema de Enlaces Simbólicos**: Gestión de versiones sin manipulación de PATH
+- 🔗 **Sistema de Enlaces Robusto**: Tres niveles de fallback para máxima compatibilidad
 - 🛡️ **Vista Mejorada de LTS**: `nvm ls` muestra versiones LTS con estado y metadatos
 - 🛡️ **Manejo Robusto de Errores**: Validación completa y mensajes informativos
 - 📦 **Compatibilidad Total**: Funciona con npm, yarn, pnpm y más
@@ -25,14 +25,14 @@
 - ✅ **Scripts de Verificación**: Herramientas avanzadas para validar instalación
 
 [![Estado](https://img.shields.io/badge/Estado-Beta-orange.svg)](https://github.com/FreddyCamposeco/nvm-windows)
-[![Versión](https://img.shields.io/badge/Versi%C3%B3n-2.5-blue.svg)](https://github.com/FreddyCamposeco/nvm-windows)
+[![Versión](https://img.shields.io/badge/Versi%C3%B3n-2.5.1-blue.svg)](https://github.com/FreddyCamposeco/nvm-windows)
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1+-blue.svg)](https://github.com/PowerShell/PowerShell)
 
 Una adaptación completa de [nvm](https://github.com/nvm-sh/nvm) para Windows n
 
-## 🔗 Sistema de Enlaces Robusto (v2.5+)
+## 🔗 Sistema de Enlaces Robusto (v2.5.1+)
 
-La versión 2.5 incluye el **sistema revolucionario de enlaces robustos** que elimina la manipulación directa del PATH para cada cambio de versión, junto con **mejoras significativas en la gestión automática de variables de entorno**.
+La versión 2.5.1 incluye el **sistema revolucionario de enlaces robustos** que elimina la manipulación directa del PATH para cada cambio de versión, junto con **mejoras significativas en la gestión automática de variables de entorno**.
 
 ### Cómo funciona
 

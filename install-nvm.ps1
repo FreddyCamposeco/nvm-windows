@@ -1,4 +1,4 @@
-# install-nvm.ps1 - Script de instalación para nvm-windows v2.5
+# install-nvm.ps1 - Script de instalación para nvm-windows v2.5.1
 param(
     [switch]$Uninstall,
     [switch]$SkipLtsInstall
