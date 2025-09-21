@@ -121,7 +121,58 @@ function Show-NvmVersion {
 function Update-NvmSelf {
     Write-Output "Actualizando nvm-windows..."
 
-    # Obtener todas las releases y tomar la más reciente (incluyendo pre-releases)
+    # Función auxiliar para obtener la versión actual
+    function Get-CurrentNvmVersion {
+        $versionFile = "$PSScriptRoot\..\VERSION.md"
+        if (Test-Path $versionFile) {
+            $content = Get-Content $versionFile -Raw
+            if ($content -match "## Current Version:\s*(v[\d\.]+)") {
+                return $matches[1]
+            }
+        }
+        # Fallback: intentar obtener desde el README
+        $readmeFile = "$PSScriptRoot\..\README.md"
+        if (Test-Path $readmeFile) {
+            $firstLine = Get-Content $readmeFile -First 1
+            if ($firstLine -match "# nvm-windows (v[\d\.]+)") {
+                return $matches[1]
+            }
+        }
+        # Último fallback: versión hardcodeada
+        return "v2.5"
+    }
+
+    # Función auxiliar para comparar versiones semánticas
+    function Compare-Versions {
+        param([string]$version1, [string]$version2)
+
+        # Remover prefijo 'v' si existe
+        $v1 = $version1 -replace '^v', ''
+        $v2 = $version2 -replace '^v', ''
+
+        # Si una versión contiene 'beta', 'alpha', etc., considerarla menor
+        $isPreRelease1 = $v1 -match '-(alpha|beta|rc)'
+        $isPreRelease2 = $v2 -match '-(alpha|beta|rc)'
+
+        if ($isPreRelease1 -and -not $isPreRelease2) { return -1 }
+        if (-not $isPreRelease1 -and $isPreRelease2) { return 1 }
+
+        # Comparar versiones numéricas
+        $parts1 = $v1 -split '\.'
+        $parts2 = $v2 -split '\.'
+
+        for ($i = 0; $i -lt [Math]::Max($parts1.Length, $parts2.Length); $i++) {
+            $part1 = if ($i -lt $parts1.Length) { [int]($parts1[$i] -replace '[^\d].*', '') } else { 0 }
+            $part2 = if ($i -lt $parts2.Length) { [int]($parts2[$i] -replace '[^\d].*', '') } else { 0 }
+
+            if ($part1 -gt $part2) { return 1 }
+            if ($part1 -lt $part2) { return -1 }
+        }
+
+        return 0
+    }
+
+    # Obtener todas las releases y tomar la más reciente (excluyendo drafts)
     $repoUrl = "https://api.github.com/repos/freddyCamposeco/nvm-windows/releases"
 
     try {
@@ -129,14 +180,21 @@ function Update-NvmSelf {
         $latestRelease = $releases | Where-Object { -not $_.draft } | Select-Object -First 1
 
         if (-not $latestRelease) {
-            Write-NvmError "No se encontraron releases disponibles"
+            Write-Output "No se encontraron releases publicadas en GitHub"
+            Write-Output "Para actualizar manualmente, descarga la última versión desde:"
+            Write-Output "https://github.com/FreddyCamposeco/nvm-windows/releases"
             return
         }
 
         $latestVersion = $latestRelease.tag_name
-        $currentVersion = "v2.4-beta"  # Versión actual hardcodeada
+        $currentVersion = Get-CurrentNvmVersion
 
-        if ($latestVersion -ne $currentVersion) {
+        Write-Output "Versión actual: $currentVersion"
+        Write-Output "Versión más reciente: $latestVersion"
+
+        $versionComparison = Compare-Versions $currentVersion $latestVersion
+
+        if ($versionComparison -lt 0) {
             Write-Output "Nueva versión disponible: $latestVersion"
             Write-Output "Descargando actualización..."
 
@@ -170,17 +228,29 @@ function Update-NvmSelf {
             $extractedDir = Get-ChildItem -Path $tempDir | Where-Object { $_.PSIsContainer } | Select-Object -First 1
 
             if ($extractedDir) {
+                $sourcePath = "$tempDir\$($extractedDir.Name)"
+
                 # Copiar archivos principales
-                Get-ChildItem -Path "$tempDir\$($extractedDir.Name)" -File | ForEach-Object {
+                Get-ChildItem -Path $sourcePath -File | ForEach-Object {
                     Copy-Item $_.FullName -Destination $nvmDir -Force
                 }
 
                 # Copiar módulos si existen
-                $modulesDir = "$tempDir\$($extractedDir.Name)\modules"
+                $modulesDir = "$sourcePath\modules"
                 if (Test-Path $modulesDir) {
                     Get-ChildItem -Path $modulesDir -File | ForEach-Object {
                         Copy-Item $_.FullName -Destination "$nvmDir\modules" -Force
                     }
+                }
+
+                # Copiar otros directorios importantes (excepto versiones instaladas)
+                $excludeDirs = @('versions', 'test', '_nvm')
+                Get-ChildItem -Path $sourcePath -Directory | Where-Object { $excludeDirs -notcontains $_.Name } | ForEach-Object {
+                    $destDir = "$nvmDir\$($_.Name)"
+                    if (-not (Test-Path $destDir)) {
+                        New-Item -ItemType Directory -Path $destDir -Force | Out-Null
+                    }
+                    Copy-Item "$sourcePath\$($_.Name)\*" -Destination $destDir -Recurse -Force
                 }
             }
 
@@ -191,8 +261,12 @@ function Update-NvmSelf {
             Write-Output "✓ nvm-windows actualizado a $latestVersion"
             Write-Output "Reinicia la terminal para aplicar los cambios"
         }
-        else {
+        elseif ($versionComparison -eq 0) {
             Write-Output "nvm-windows ya está actualizado ($currentVersion)"
+        }
+        else {
+            Write-Output "Tu versión ($currentVersion) es más reciente que la release disponible ($latestVersion)"
+            Write-Output "Estás ejecutando una versión de desarrollo"
         }
     }
     catch {

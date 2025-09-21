@@ -632,13 +632,37 @@ function nvm { & "$env:USERPROFILE\.nvm\nvm.ps1" @args }
 
 ## 🏠 Auto-actualización
 
-Mantén nvm-windows al día con el comando integrado:
+Mantén nvm-windows al día con el comando integrado de auto-actualización:
 
 ```powershell
-# Actualizar a la última versión
+# Actualizar a la última versión disponible
 nvm self-update
 
-# El comando crea un backup automático antes de actualizar
+# El comando compara versiones automáticamente y solo actualiza si hay una versión más nueva
+```
+
+### Cómo funciona
+
+- **Detección automática**: Lee la versión actual desde `VERSION.md`
+- **Comparación inteligente**: Compara versiones semánticas correctamente (v2.5 > v2.4-beta)
+- **Descarga segura**: Descarga desde releases oficiales de GitHub
+- **Backup automático**: Crea backup antes de actualizar archivos
+- **Actualización selectiva**: Solo actualiza archivos del núcleo, preserva versiones instaladas
+
+### Estados posibles
+
+```powershell
+# Versión actualizada
+nvm-windows ya está actualizado (v2.5)
+
+# Nueva versión disponible
+Nueva versión disponible: v2.6
+Descargando actualización...
+✓ nvm-windows actualizado a v2.6
+
+# Versión de desarrollo (adelantada)
+Tu versión (v2.5) es más reciente que la release disponible (v2.4-beta)
+Estás ejecutando una versión de desarrollo
 ```
 
 ## 🧹 Limpieza Automática
