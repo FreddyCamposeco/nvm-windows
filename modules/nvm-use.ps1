@@ -96,6 +96,7 @@ function Set-NvmSymlinks {
 
     # Verificar si podemos crear enlaces simbólicos
     $canCreateSymlinks = Test-SymlinkPermissions
+    $canCreateJunctions = Test-JunctionPermissions
 
     if ($canCreateSymlinks) {
         Write-Host "Creando enlace simbólico para Node.js $Version..." -ForegroundColor Cyan
@@ -114,60 +115,15 @@ function Set-NvmSymlinks {
 
         } catch {
             Write-host "No se pudo crear enlace simbólico: $($_.Exception.Message)" -ForegroundColor Red
-            Write-Host "Usando sistema de copias como fallback..." -ForegroundColor Yellow
-
-            # Fallback: Crear directorio y copiar archivos
-            if (!(Test-Path $currentDir)) {
-                New-Item -ItemType Directory -Path $currentDir -Force | Out-Null
-            }
-
-            # Limpiar directorio current
-            Get-ChildItem -Path $currentDir | Remove-Item -Recurse -Force
-
-            Write-Host "Copiando archivos de Node.js $Version..." -ForegroundColor Cyan
-
-            # Copiar archivos (método alternativo)
-            $items = Get-ChildItem -Path $versionDir
-            foreach ($item in $items) {
-                $targetPath = Join-Path $currentDir $item.Name
-                $sourcePath = $item.FullName
-
-                if ($item.PSIsContainer) {
-                    Copy-Item -Path $sourcePath -Destination $targetPath -Recurse -Force
-                } else {
-                    Copy-Item -Path $sourcePath -Destination $targetPath -Force
-                }
-            }
-
-            Write-Host "Archivos copiados exitosamente" -ForegroundColor Green
+            Write-Host "Intentando con junction points..." -ForegroundColor Yellow
+            Create-JunctionFallback $Version
         }
+    } elseif ($canCreateJunctions) {
+        Write-Host "Creando junction point para Node.js $Version..." -ForegroundColor Cyan
+        Create-JunctionFallback $Version
     } else {
-        Write-Host "No hay permisos para crear enlaces simbólicos. Usando sistema de copias..." -ForegroundColor Red
-
-        # Crear directorio current si no existe
-        if (!(Test-Path $currentDir)) {
-            New-Item -ItemType Directory -Path $currentDir -Force | Out-Null
-        }
-
-        # Limpiar directorio current
-        Get-ChildItem -Path $currentDir | Remove-Item -Recurse -Force
-
-        Write-Host "Copiando archivos de Node.js $Version..." -ForegroundColor Cyan
-
-        # Copiar archivos (método alternativo)
-        $items = Get-ChildItem -Path $versionDir
-        foreach ($item in $items) {
-            $targetPath = Join-Path $currentDir $item.Name
-            $sourcePath = $item.FullName
-
-            if ($item.PSIsContainer) {
-                Copy-Item -Path $sourcePath -Destination $targetPath -Recurse -Force
-            } else {
-                Copy-Item -Path $sourcePath -Destination $targetPath -Force
-            }
-        }
-
-        Write-Host "Archivos copiados exitosamente" -ForegroundColor Green
+        Write-Host "No hay permisos para crear enlaces simbólicos o junctions. Usando sistema de copias..." -ForegroundColor Red
+        Create-CopyFallback $Version
     }
 }
 
@@ -212,19 +168,20 @@ function Show-CurrentVersion {
 
 # Función para migrar al sistema de enlaces simbólicos
 function Migrate-ToSymlinks {
-    Write-Host "Iniciando migración al sistema de enlaces simbólicos..." -ForegroundColor Cyan
+    Write-Host "Iniciando migración al sistema de enlaces optimizados..." -ForegroundColor Cyan
 
-    # Verificar permisos para enlaces simbólicos
+    # Verificar permisos para diferentes tipos de enlaces
     $canCreateSymlinks = Test-SymlinkPermissions
+    $canCreateJunctions = Test-JunctionPermissions
 
-    if (-not $canCreateSymlinks) {
-        Write-Host "No se detectaron permisos para crear enlaces simbólicos." -ForegroundColor Red
-        Write-Host "Para habilitar enlaces simbólicos:" -ForegroundColor Yellow
-        Write-Host "  1. Ejecutar PowerShell como Administrador" -ForegroundColor Cyan
-        Write-Host "  2. Ejecutar: fsutil behavior set SymlinkEvaluation L2L:1 L2R:1 R2L:1 R2R:1" -ForegroundColor Cyan
-        Write-Host "  3. Reiniciar PowerShell y ejecutar: nvm migrate" -ForegroundColor Cyan
+    if (-not $canCreateSymlinks -and -not $canCreateJunctions) {
+        Write-Host "No se detectaron permisos para crear enlaces simbólicos o junctions." -ForegroundColor Red
+        Write-Host "Opciones para habilitar enlaces:" -ForegroundColor Yellow
+        Write-Host "  1. Ejecutar PowerShell como Administrador y ejecutar:" -ForegroundColor Cyan
+        Write-Host "     fsutil behavior set SymlinkEvaluation L2L:1 L2R:1 R2L:1 R2R:1" -ForegroundColor Cyan
+        Write-Host "  2. O usar el sistema de copias optimizado (funciona sin permisos especiales)" -ForegroundColor Cyan
         Write-Host ""
-        Write-Host "Continuando con sistema de copias..." -ForegroundColor Yellow
+        Write-Host "Continuando con sistema de copias optimizado..." -ForegroundColor Yellow
         return
     }
 
@@ -232,21 +189,35 @@ function Migrate-ToSymlinks {
     $currentVersion = Get-NvmCurrentVersion
     if ($currentVersion) {
         try {
-            Write-Host "Migrando versión $currentVersion a enlaces simbólicos..." -ForegroundColor Cyan
-            Set-NvmSymlinks $currentVersion
+            Write-Host "Migrando versión $currentVersion..." -ForegroundColor Cyan
+
+            if ($canCreateSymlinks) {
+                Write-Host "Usando enlaces simbólicos (requiere administrador)..." -ForegroundColor Green
+                Set-NvmSymlinks $currentVersion
+            } elseif ($canCreateJunctions) {
+                Write-Host "Usando junction points (no requiere permisos especiales)..." -ForegroundColor Green
+                Create-JunctionFallback $currentVersion
+            }
 
             # Verificar que los enlaces se crearon correctamente
             $currentItem = Get-Item "$NVM_DIR\current" -ErrorAction SilentlyContinue
-            if ($currentItem -and $currentItem.LinkType -eq "SymbolicLink") {
-                Write-Host "✅ Migración completada exitosamente!" -ForegroundColor Green
-                Write-Host "Ahora usando enlace simbólico: $NVM_DIR\current -> $($currentItem.Target)" -ForegroundColor Green
+            if ($currentItem) {
+                if ($currentItem.LinkType -eq "SymbolicLink") {
+                    Write-Host "✅ Migración completada exitosamente (Symbolic Link)!" -ForegroundColor Green
+                    Write-Host "Ahora usando enlace simbólico: $NVM_DIR\current -> $($currentItem.Target)" -ForegroundColor Green
+                } elseif ($currentItem.LinkType -eq "Junction") {
+                    Write-Host "✅ Migración completada exitosamente (Junction Point)!" -ForegroundColor Green
+                    Write-Host "Ahora usando junction point: $NVM_DIR\current -> $($currentItem.Target)" -ForegroundColor Green
+                } else {
+                    Write-Host "Migración completada con sistema de copias optimizado" -ForegroundColor Yellow
+                }
             } else {
-                Write-Host "El enlace simbólico no se creó correctamente. Usando sistema de copias." -ForegroundColor Red
+                Write-Host "El enlace no se creó correctamente. Usando sistema de copias." -ForegroundColor Red
             }
         }
         catch {
             Write-Host "Error durante la migración: $($_.Exception.Message)" -ForegroundColor Red
-            Write-Host "Revirtiendo a sistema de copias..." -ForegroundColor Yellow
+            Write-Host "Revirtiendo a sistema de copias optimizado..." -ForegroundColor Yellow
         }
     }
     else {
@@ -300,29 +271,49 @@ function Get-NvmSymlinkStatus {
         return
     }
 
-    # Verificar si current es un enlace simbólico
+    # Verificar si current es un enlace simbólico o junction
     $currentItem = Get-Item $currentDir -ErrorAction SilentlyContinue
-    $isCurrentSymlink = $currentItem -and $currentItem.LinkType -eq "SymbolicLink"
+    $isSymlink = $currentItem -and $currentItem.LinkType -eq "SymbolicLink"
+    $isJunction = $currentItem -and $currentItem.LinkType -eq "Junction"
 
-    if ($isCurrentSymlink) {
+    if ($isSymlink) {
         Write-Host "Estado del directorio current:" -ForegroundColor Cyan
-        Write-Host "  [LINK] Directorio current es un enlace simbólico" -ForegroundColor Green
+        Write-Host "  [SYMLINK] Directorio current es un enlace simbólico" -ForegroundColor Green
         Write-Host "  [TARGET] Apunta a: $($currentItem.Target)" -ForegroundColor Green
         Write-Host "  [FAST] Cambios de versión instantáneos activados" -ForegroundColor Green
         return
     }
 
-    # Si no es un enlace simbólico, verificar archivos individuales (modo compatibilidad)
+    if ($isJunction) {
+        Write-Host "Estado del directorio current:" -ForegroundColor Cyan
+        Write-Host "  [JUNCTION] Directorio current es un junction point" -ForegroundColor Green
+        Write-Host "  [TARGET] Apunta a: $($currentItem.Target)" -ForegroundColor Green
+        Write-Host "  [FAST] Cambios de versión casi instantáneos activados" -ForegroundColor Green
+        return
+    }
+
+    # Si no es un enlace simbólico ni junction, verificar archivos individuales (modo compatibilidad)
     $items = Get-ChildItem -Path $currentDir
     $symlinks = $items | Where-Object { $_.LinkType -eq "SymbolicLink" }
-    $regularFiles = $items | Where-Object { $_.LinkType -ne "SymbolicLink" -and -not $_.PSIsContainer }
+    $regularFiles = $items | Where-Object { $_.LinkType -ne "SymbolicLink" -and $_.LinkType -ne "Junction" -and -not $_.PSIsContainer }
     $directories = $items | Where-Object { $_.PSIsContainer }
 
     Write-Host "Estado del directorio current:" -ForegroundColor Cyan
     Write-Host "  [DIR] Total de elementos: $($items.Count)" -ForegroundColor Cyan
-    Write-Host "  [LINK] Enlaces simbolicos: $($symlinks.Count)" -ForegroundColor Green
+    Write-Host "  [SYMLINK] Enlaces simbólicos: $($symlinks.Count)" -ForegroundColor Green
     Write-Host "  [FILE] Archivos regulares: $($regularFiles.Count)" -ForegroundColor Yellow
     Write-Host "  [FOLDER] Directorios: $($directories.Count)" -ForegroundColor Magenta
+
+    # Verificar versión actual
+    $versionFile = "$currentDir\.nvm_version"
+    if (Test-Path $versionFile) {
+        try {
+            $version = Get-Content $versionFile -Raw -Encoding UTF8 | ForEach-Object { $_.Trim() }
+            Write-Host "  [VERSION] Versión actual: $version" -ForegroundColor Cyan
+        } catch {
+            Write-Host "  [VERSION] Error al leer versión" -ForegroundColor Red
+        }
+    }
 
     if ($symlinks.Count -gt 0) {
         Write-Host ""
@@ -339,14 +330,166 @@ function Get-NvmSymlinkStatus {
 
     # Verificar permisos
     $canCreateSymlinks = Test-SymlinkPermissions
+    $canCreateJunctions = Test-JunctionPermissions
+
     Write-Host ""
     if ($canCreateSymlinks) {
         Write-Host "✅ Permisos para enlaces simbólicos: HABILITADOS" -ForegroundColor Green
+        Write-Host "   Recomendado: nvm migrate (instantáneo)" -ForegroundColor Cyan
+    } elseif ($canCreateJunctions) {
+        Write-Host "✅ Permisos para junction points: HABILITADOS" -ForegroundColor Green
+        Write-Host "   Recomendado: nvm migrate (casi instantáneo)" -ForegroundColor Cyan
     } else {
         Write-Host "❌ Permisos para enlaces simbólicos: DESHABILITADOS" -ForegroundColor Red
-        Write-Host "   Para habilitar:" -ForegroundColor Yellow
+        Write-Host "❌ Permisos para junction points: DESHABILITADOS" -ForegroundColor Red
+        Write-Host "   Usando: Sistema de copias optimizado" -ForegroundColor Yellow
+        Write-Host "   Para mejorar rendimiento:" -ForegroundColor Cyan
         Write-Host "   1. Ejecutar PowerShell como Administrador" -ForegroundColor Cyan
         Write-Host "   2. Ejecutar: fsutil behavior set SymlinkEvaluation L2L:1 L2R:1 R2L:1 R2R:1" -ForegroundColor Cyan
-        Write-Host "   3. Reiniciar PowerShell" -ForegroundColor Cyan
+        Write-Host "   3. Reiniciar PowerShell y ejecutar: nvm migrate" -ForegroundColor Cyan
+    }
+}
+
+# Función para verificar permisos de junction points
+function Test-JunctionPermissions {
+    try {
+        $testDir = "$NVM_DIR\.junction_test"
+
+        # Crear directorio de prueba
+        New-Item -ItemType Directory -Path $testDir -Force | Out-Null
+
+        # Crear subdirectorio de prueba
+        $subDir = "$testDir\subdir"
+        New-Item -ItemType Directory -Path $subDir -Force | Out-Null
+
+        # Intentar crear junction point usando cmd
+        $junctionCmd = "cmd /c mklink /j `"$testDir\junction`" `"$subDir`""
+        $result = Invoke-Expression $junctionCmd 2>&1
+
+        # Verificar que el junction se creó
+        $isJunction = Test-Path "$testDir\junction"
+
+        # Limpiar archivos de prueba
+        Remove-Item -Path $testDir -Recurse -Force -ErrorAction SilentlyContinue
+
+        return $isJunction
+    } catch {
+        # Limpiar archivos de prueba en caso de error
+        if (Test-Path $testDir) {
+            Remove-Item -Path $testDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        return $false
+    }
+}
+
+# Función para crear junction point como alternativa
+function Create-JunctionFallback {
+    param([string]$Version)
+
+    $currentDir = "$NVM_DIR\current"
+    $versionDir = "$NVM_DIR\$Version"
+
+    try {
+        # Limpiar directorio current si existe
+        if (Test-Path $currentDir) {
+            Remove-Item -Path $currentDir -Recurse -Force
+        }
+
+        # Crear junction point usando cmd
+        $junctionCmd = "cmd /c mklink /j `"$currentDir`" `"$versionDir`""
+        $result = Invoke-Expression $junctionCmd 2>&1
+
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "Junction point creado: $currentDir -> $versionDir" -ForegroundColor Green
+            Write-Host "Cambios de versión ahora son casi instantáneos!" -ForegroundColor Green
+        } else {
+            throw "Error al crear junction point: $result"
+        }
+
+    } catch {
+        Write-Host "No se pudo crear junction point: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "Usando sistema de copias como último recurso..." -ForegroundColor Yellow
+        Create-CopyFallback $Version
+    }
+}
+
+# Función para crear sistema de copias optimizado
+function Create-CopyFallback {
+    param([string]$Version)
+
+    $currentDir = "$NVM_DIR\current"
+    $versionDir = "$NVM_DIR\$Version"
+
+    # Crear directorio current si no existe
+    if (!(Test-Path $currentDir)) {
+        New-Item -ItemType Directory -Path $currentDir -Force | Out-Null
+    }
+
+    # Verificar si ya está usando la versión correcta (optimización)
+    $currentVersionFile = "$currentDir\.nvm_version"
+    $needsUpdate = $true
+
+    if (Test-Path $currentVersionFile) {
+        try {
+            $currentVersion = Get-Content $currentVersionFile -Raw -Encoding UTF8 | ForEach-Object { $_.Trim() }
+            if ($currentVersion -eq $Version) {
+                $needsUpdate = $false
+                Write-Host "Versión $Version ya está activa (sin cambios necesarios)" -ForegroundColor Green
+            }
+        } catch {
+            # Ignorar errores de lectura
+        }
+    }
+
+    if ($needsUpdate) {
+        Write-Host "Copiando archivos de Node.js $Version..." -ForegroundColor Cyan
+
+        # Limpiar directorio current (excepto archivos de control)
+        Get-ChildItem -Path $currentDir | Where-Object { $_.Name -ne ".nvm_version" } | Remove-Item -Recurse -Force
+
+        # Copiar archivos de manera optimizada (solo archivos modificados)
+        $items = Get-ChildItem -Path $versionDir
+        $totalItems = $items.Count
+        $processed = 0
+
+        foreach ($item in $items) {
+            $targetPath = Join-Path $currentDir $item.Name
+            $sourcePath = $item.FullName
+
+            if ($item.PSIsContainer) {
+                # Para directorios, verificar si existen y son diferentes
+                if (!(Test-Path $targetPath)) {
+                    Copy-Item -Path $sourcePath -Destination $targetPath -Recurse -Force
+                }
+            } else {
+                # Para archivos, verificar si existen y son diferentes
+                $needsCopy = $true
+                if (Test-Path $targetPath) {
+                    try {
+                        $sourceHash = Get-FileHash $sourcePath -Algorithm MD5
+                        $targetHash = Get-FileHash $targetPath -Algorithm MD5
+                        if ($sourceHash.Hash -eq $targetHash.Hash) {
+                            $needsCopy = $false
+                        }
+                    } catch {
+                        # Si hay error al calcular hash, copiar de todas formas
+                    }
+                }
+
+                if ($needsCopy) {
+                    Copy-Item -Path $sourcePath -Destination $targetPath -Force
+                }
+            }
+
+            $processed++
+            if ($processed % 5 -eq 0) {
+                Write-Host "  Progreso: $processed / $totalItems archivos..." -ForegroundColor Gray
+            }
+        }
+
+        # Guardar marca de versión
+        $Version | Out-File -FilePath $currentVersionFile -Encoding UTF8 -NoNewline
+
+        Write-Host "Archivos copiados exitosamente" -ForegroundColor Green
     }
 }

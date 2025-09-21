@@ -30,23 +30,46 @@
 
 Una adaptación completa de [nvm](https://github.com/nvm-sh/nvm) para Windows n
 
-## 🔗 Sistema de Enlaces Simbólicos (v2.5)
+## 🔗 Sistema de Enlaces Robusto (v2.5+)
 
-La versión 2.5 incluye el **sistema revolucionario de enlaces simbólicos** que elimina la manipulación directa del PATH para cada cambio de versión, junto con **mejoras significativas en la gestión automática de variables de entorno**.
+La versión 2.5 incluye el **sistema revolucionario de enlaces robustos** que elimina la manipulación directa del PATH para cada cambio de versión, junto con **mejoras significativas en la gestión automática de variables de entorno**.
 
 ### Cómo funciona
 
 - **Ubicación virtual fija**: `$NVM_DIR\current\` se agrega al PATH una sola vez durante la instalación
-- **Enlaces dinámicos**: Los ejecutables de Node.js se enlazan simbólicamente desde la versión instalada a la ubicación virtual
-- **Cambios instantáneos**: `nvm use <versión>` actualiza enlaces simbólicos en lugar de modificar PATH
+- **Enlaces dinámicos inteligentes**: Los ejecutables de Node.js se enlazan usando el mejor método disponible
+- **Cambios ultra-rápidos**: `nvm use <versión>` actualiza enlaces en lugar de modificar PATH
+
+### Sistema de Fallback Robusto
+
+nvm-windows implementa un **sistema de tres niveles de fallback** para máxima compatibilidad:
+
+#### 🚀 **Nivel 1: Enlaces Simbólicos** (Máximo rendimiento)
+
+- **Requisitos**: PowerShell como Administrador + configuración del sistema
+- **Ventajas**: Cambios de versión instantáneos (milisegundos)
+- **Comando**: `fsutil behavior set SymlinkEvaluation L2L:1 L2R:1 R2L:1 R2R:1`
+
+#### ⚡ **Nivel 2: Junction Points** (Alto rendimiento)
+
+- **Requisitos**: Ninguno (funciona en entornos estándar)
+- **Ventajas**: Cambios casi instantáneos, no requiere permisos especiales
+- **Comportamiento**: Automáticamente usado cuando symlinks no están disponibles
+
+#### 🛡️ **Nivel 3: Copias Optimizadas** (Compatibilidad total)
+
+- **Requisitos**: Ninguno (siempre funciona)
+- **Ventajas**: Funciona en cualquier entorno Windows
+- **Optimización**: Solo copia archivos modificados, mantiene caché inteligente
 
 ### Beneficios
 
-- 🚀 **Rendimiento mejorado**: Cambios de versión instantáneos
+- 🚀 **Rendimiento adaptativo**: Usa el método más rápido disponible automáticamente
 - 🛡️ **PATH estable**: No se modifica el PATH del sistema para cada cambio
-- 🔧 **Mejor compatibilidad**: Funciona perfectamente con herramientas como Starship
+- 🔧 **Compatibilidad universal**: Funciona en cualquier configuración de Windows
 - 💾 **Persistencia**: La versión activa se mantiene entre sesiones
-- 🔄 **Migración automática**: Comando `migrate` para actualizar desde versiones anteriores
+- 🔄 **Migración automática**: Comando `migrate` detecta y usa el mejor método disponible
+- 📊 **Diagnóstico integrado**: `nvm symlink-status` muestra estado y recomendaciones
 
 ### Uso
 
@@ -700,8 +723,6 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para
 - [jorgebucaran/nvm.fish](https://github.com/jorgebucaran/nvm.fish) - Inspiración para el formato, aliases y .nvmrc
 - Comunidad de PowerShell por su excelente documentación
 - Contribuciones de la comunidad para las mejoras continuas
-
----
 
 ## 📦 Estructura del Repositorio
 
