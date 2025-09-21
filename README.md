@@ -11,7 +11,7 @@
 - 🎨 **Colores Personalizables**: Esquemas de color completamente configurables
 - 🚀 **Instalación Automática**: Setup con un solo comando + instalación opcional de LTS
 - 🔄 **Auto-actualización**: Comando `self-update` para mantener al día
-- 🏠 **Versión por Defecto**: Configura versión automática para nuevas sesiones
+- 🏠 **Versión por Defecto**: Configura versión automática para nuevas sesiones y auto-cambio
 - 🧹 **Limpieza Automática**: Comando `cleanup` para eliminar versiones innecesarias
 - 🛡️ **Desinstalación Forzada**: Opción `--force` para desinstalar versión activa
 - 🔗 **Sistema de Enlaces Simbólicos**: Gestión de versiones sin manipulación de PATH
@@ -58,6 +58,55 @@ nvm migrate
 # Cambiar versiones (ahora instantáneo)
 nvm use lts
 nvm use 20.19.5
+```
+
+## 🎯 Jerarquía de Versiones
+
+nvm-windows sigue una **jerarquía clara de prioridades** para determinar qué versión de Node.js usar, similar a nvm.sh pero con mejoras para Windows:
+
+### Orden de Prioridad
+
+1. **📄 .nvmrc** (Máxima prioridad)
+   - Archivo `.nvmrc` o `.node-version` en el directorio actual o superior
+   - Se detecta automáticamente con `nvm use` y auto-cambio
+   - Soporta versiones específicas, aliases (`lts`, `latest`) y nombres LTS
+
+2. **🏠 NVM_DEFAULT_VERSION** (Fallback)
+   - Versión por defecto configurada con `nvm set-default <version>`
+   - Se usa cuando no hay archivo `.nvmrc`
+   - Funciona en `nvm use` sin argumentos y auto-cambio
+
+3. **❌ Error** (Sin configuración)
+   - Si no hay `.nvmrc` ni `NVM_DEFAULT_VERSION`
+   - Muestra mensaje con sugerencias para resolver
+
+### Comportamiento en la Práctica
+
+```powershell
+# Configurar versión por defecto
+nvm set-default lts
+
+# Con .nvmrc presente (prioridad máxima)
+echo "20.19.5" > .nvmrc
+nvm use  # → Usa v20.19.5 del .nvmrc
+
+# Sin .nvmrc (usa fallback)
+rm .nvmrc
+nvm use  # → Usa versión por defecto (LTS)
+
+# Auto-cambio funciona igual
+cd proyecto-con-nvmrc/    # → Cambia a versión del .nvmrc
+cd proyecto-sin-nvmrc/    # → Cambia a NVM_DEFAULT_VERSION
+```
+
+### Configuración Recomendada
+
+```powershell
+# Para desarrollo general
+nvm set-default lts
+
+# Para proyectos específicos
+echo "18.19.0" > proyecto-especifico/.nvmrc
 ```
 
 ## ⚡ Sistema de Cache Local
@@ -212,7 +261,7 @@ nvm cleanup
 | `nvm migrate`               | Migra al sistema de enlaces simbólicos                 | `nvm migrate`          |
 | `nvm self-update`           | Actualiza nvm-windows                                  | `nvm self-update`      |
 | `nvm cleanup`               | Elimina versiones innecesarias (mantiene actual y LTS) | `nvm cleanup`          |
-| `nvm set-default <versión>` | Establece versión por defecto                          | `nvm set-default lts`  |
+| `nvm set-default <versión>` | Establece versión por defecto para auto-cambio y `nvm use` | `nvm set-default lts`  |
 | `nvm set-colors <esquema>`  | Configura colores                                      | `nvm set-colors bygre` |
 | `nvm help`                  | Muestra ayuda completa                                 | `nvm help`             |
 
@@ -521,20 +570,25 @@ node --version  # v24.x.x
 echo "20.19.5" > .nvmrc
 nvm use  # Detecta automáticamente
 
+# Establecer versión por defecto (fallback cuando no hay .nvmrc)
+nvm set-default lts
+
 # Auto-cambio automático (como nvm.sh)
 nvm auto on      # Habilita auto-cambio
 nvm auto setup   # Instala hook en perfil
 nvm auto status  # Verifica estado
 
+# Jerarquía de versiones:
+# 1. .nvmrc (prioridad máxima)
+# 2. NVM_DEFAULT_VERSION (cuando no hay .nvmrc)
+# 3. Error si no hay ninguna configurada
+
 # Ahora al cambiar de directorio se cambia automáticamente
 cd proyecto-con-nvmrc/
 # nvm: Cambiando a v20.19.5 (.nvmrc)
 
-# Ver todas las versiones
-nvm ls
-
-# Limpiar versiones antiguas
-nvm cleanup
+cd proyecto-sin-nvmrc/
+# nvm: Cambiando a versión por defecto v22.19.0
 ```
 
 ### Automatización con Scripts

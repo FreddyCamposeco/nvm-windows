@@ -8,7 +8,7 @@ function Use-Node {
     )
 
     if ([string]::IsNullOrWhiteSpace($Version)) {
-        # Buscar .nvmrc
+        # Buscar .nvmrc (prioridad máxima)
         $nvmrcVersion = Get-NvmrcVersion
         if ($nvmrcVersion) {
             if (-not $Quiet) {
@@ -17,8 +17,18 @@ function Use-Node {
             $Version = $nvmrcVersion
         }
         else {
-            Write-NvmError "Versión es requerida. Uso: nvm use <versión>"
-            return
+            # Buscar versión por defecto (fallback)
+            $defaultVersion = [Environment]::GetEnvironmentVariable("NVM_DEFAULT_VERSION", "User")
+            if ($defaultVersion) {
+                if (-not $Quiet) {
+                    Write-Output "Usando versión por defecto: $defaultVersion"
+                }
+                $Version = $defaultVersion
+            }
+            else {
+                Write-NvmError "Versión es requerida. Establece una versión por defecto con 'nvm set-default <version>' o crea un .nvmrc"
+                return
+            }
         }
     }
 

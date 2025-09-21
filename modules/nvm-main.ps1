@@ -615,12 +615,24 @@ function Install-NvmAutoHook {
 # NVM Auto-Switch Hook
 function Nvm-AutoSwitch {
     try {
+        # Buscar .nvmrc primero (prioridad máxima)
         $nvmrcVersion = & "$env:NVM_DIR\nvm.ps1" --get-nvmrc-version 2>$null
         if ($nvmrcVersion) {
             $currentVersion = & "$env:NVM_DIR\nvm.ps1" current 2>$null
             if ($currentVersion -ne $nvmrcVersion) {
                 Write-Host "nvm: Cambiando a $nvmrcVersion (.nvmrc)" -ForegroundColor Yellow
                 & "$env:NVM_DIR\nvm.ps1" use $nvmrcVersion --quiet 2>$null | Out-Null
+            }
+        }
+        else {
+            # Si no hay .nvmrc, usar versión por defecto
+            $defaultVersion = [Environment]::GetEnvironmentVariable("NVM_DEFAULT_VERSION", "User")
+            if ($defaultVersion) {
+                $currentVersion = & "$env:NVM_DIR\nvm.ps1" current 2>$null
+                if ($currentVersion -ne $defaultVersion) {
+                    Write-Host "nvm: Cambiando a versión por defecto $defaultVersion" -ForegroundColor Yellow
+                    & "$env:NVM_DIR\nvm.ps1" use $defaultVersion --quiet 2>$null | Out-Null
+                }
             }
         }
     }
@@ -666,6 +678,7 @@ if (Test-Path "$env:NVM_DIR\.auto_enabled") {
 
 # Función para obtener la versión del .nvmrc (para uso interno del hook)
 function Get-NvmrcVersionForHook {
+    # Buscar .nvmrc primero
     $nvmrcVersion = Get-NvmrcVersion
     if ($nvmrcVersion) {
         $resolvedVersion = Resolve-Version $nvmrcVersion
@@ -673,6 +686,16 @@ function Get-NvmrcVersionForHook {
             return $resolvedVersion
         }
     }
+    
+    # Si no hay .nvmrc, usar versión por defecto
+    $defaultVersion = [Environment]::GetEnvironmentVariable("NVM_DEFAULT_VERSION", "User")
+    if ($defaultVersion) {
+        $resolvedVersion = Resolve-Version $defaultVersion
+        if ($resolvedVersion) {
+            return $resolvedVersion
+        }
+    }
+    
     return $null
 }
 
